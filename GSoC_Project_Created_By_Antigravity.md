@@ -186,23 +186,38 @@ My core architectural contribution in PR #81 separates mesh creation into two in
 
 ```mermaid
 flowchart LR
-    classDef default fill:#f8f9fa,stroke:#d1d5db,stroke-width:2px,rx:8px,color:#1f2937
-    classDef highlight fill:#e1f5fe,stroke:#0288d1,stroke-width:2px,rx:8px,color:#0f172a
+    %% Define clean, professional styling
+    classDef default fill:#ffffff,stroke:#d1d5db,stroke-width:1px,color:#374151,rx:4px,ry:4px;
+    classDef core fill:#e1f5fe,stroke:#0288d1,stroke-width:1.5px,color:#0f172a,rx:4px,ry:4px;
 
-    S1["Step 1: Coordinate Creation\nmesh_layout parameter"]:::highlight
-    S2["Step 2: Connectivity Creation\nm2m_connectivity parameter"]:::highlight
+    %% Input Nodes
+    A1["rectilinear<br/>(current default)"]
+    A2["triangular<br/>(Delaunay PR#92)"]
+    A3["prebuilt<br/>(ICON/MPAS PR#91)"]
+    A4["density_adaptive ★"]
+    A5["stretched ★"]
 
-    A1["rectilinear\n(current default)"] --> S1
-    A2["triangular\n(Delaunay PR#92)"] --> S1
-    A3["prebuilt\n(ICON/MPAS PR#91)"] --> S1
-    A4["density_adaptive ★"] --> S1
-    A5["stretched ★"] --> S1
+    %% Core Process Nodes
+    S1["Step 1: Coordinate<br/>Creation<br/>mesh_layout parameter"]:::core
+    S2["Step 2: Connectivity<br/>Creation<br/>m2m_connectivity parameter"]:::core
 
+    %% Output Nodes
+    B1["flat"]
+    B2["flat_multiscale"]
+    B3["hierarchical"]
+
+    %% Connections (written individually to prevent rendering errors)
+    A1 --> S1
+    A2 --> S1
+    A3 --> S1
+    A4 --> S1
+    A5 --> S1
+    
     S1 --> S2
-
-    S2 --> B1["flat"]
-    S2 --> B2["flat_multiscale"]
-    S2 --> B3["hierarchical"]
+    
+    S2 --> B1
+    S2 --> B2
+    S2 --> B3
 ```
 
 Any `mesh_layout` can combine with any `m2m_connectivity` — creating a **combinatorial explosion** of graph topologies from minimal code. This is the foundation upon which ALL other contributions in this proposal are built.
