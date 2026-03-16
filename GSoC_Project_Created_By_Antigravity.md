@@ -102,19 +102,19 @@ end
 %% ---------- MIDDLE SECTION: CORE LAYERS ----------
 subgraph CORE_ROW ["CORE ARCHITECTURE"]
     direction TB
-    L1["<div style='width:320px; text-align:left; padding:5px;'>🚀 <b>Layer 1: Foundation</b><br/>● mesh_layout PR#81 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>● triangular PR#92 (prebuilt PR#91)<br/>● v0.4.0 fixes #40/#42/#45</div>"]:::layer
+    L1["<div style='width:320px; text-align:left; padding:5px;'> <b>Layer 1: Foundation</b><br/>● mesh_layout PR#81 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>● triangular PR#92 (prebuilt PR#91)<br/>● v0.4.0 fixes #40/#42/#45</div>"]:::layer
     
-    L2["<div style='width:320px; text-align:left; padding:5px;'>⚙️ <b>Layer 2: Bridge — Issue #384</b><br/>● build_graph.py replaces create_graph.py<br/>● GraphFormatValidator<br/>● Enhanced to_pyg()</div>"]:::layer
+    L2["<div style='width:320px; text-align:left; padding:5px;'> <b>Layer 2: Bridge — Issue #384</b><br/>● build_graph.py replaces create_graph.py<br/>● GraphFormatValidator<br/>● Enhanced to_pyg()</div>"]:::layer
     
-    L3["<div style='width:320px; text-align:left; padding:5px;'>🧠 <b>Layer 3: Architecture — Issue #385</b><br/>● pyg.HeteroData migration<br/>● adapter → refactor → native loading</div>"]:::layer
+    L3["<div style='width:320px; text-align:left; padding:5px;'> <b>Layer 3: Architecture — Issue #385</b><br/>● pyg.HeteroData migration<br/>● adapter → refactor → native loading</div>"]:::layer
 end
 
 %% ---------- BOTTOM SECTION: STRETCH LAYERS ----------
 subgraph ADV_ROW ["ADVANCED RESEARCH"]
     direction TB
-    L4["<div style='width:320px; text-align:left; padding:5px;'>🔬 <b>Layer 4: Advanced Research</b><br/>● Quality Metrics · AMR · xr.DataTree<br/>● Multi-source fusion<br/>● Density-adaptive</div>"]:::layer
+    L4["<div style='width:320px; text-align:left; padding:5px;'> <b>Layer 4: Advanced Research</b><br/>● Quality Metrics · AMR · xr.DataTree<br/>● Multi-source fusion<br/>● Density-adaptive</div>"]:::layer
     
-    L5["<div style='text-align:left; width:320px; padding:5px;'>✨ <b>Layer 5: Cutting-Edge Innovations</b><br/>● Spherical Coordination System<br/>● Topology Benchmark<br/>● Learned coarsening  ● Stretched-grid<br/>● Dynamic edges  ● Analysis dashboard</div>"]:::layer
+    L5["<div style='text-align:left; width:320px; padding:5px;'> <b>Layer 5: Cutting-Edge Innovations</b><br/>● Spherical Coordination System<br/>● Topology Benchmark<br/>● Learned coarsening  ● Stretched-grid<br/>● Dynamic edges  ● Analysis dashboard</div>"]:::layer
 end
 
 %% ---------- CONNECTIONS ----------
@@ -150,7 +150,7 @@ classDef modelNode fill:#ffffff,stroke:#d1d5db,stroke-width:1px,color:#1f2937,rx
 classDef meshNode fill:#e1f5fe,stroke:#0288d1,stroke-width:2px,font-weight:bold,color:#0f172a,rx:8px
 
 %% ---------- NODES ----------
-A["🌍 <b>Grid Nodes</b><br/>(atmospheric data points<br/>at lat/lon positions)"]:::dataNode
+A[" <b>Grid Nodes</b><br/>(atmospheric data points<br/>at lat/lon positions)"]:::dataNode
 
 B["<b>g2m Encoder</b><br/>(grid → mesh<br/>KD-tree nearest)"]:::modelNode
 
@@ -158,7 +158,7 @@ subgraph ENGINE ["Neural Processing Engine"]
     %% This direction strictly controls the loop, forcing a clean, tight curve
     direction TB
     
-    C["🔷 <b>Mesh Nodes</b><br/>(processor graph<br/>m2m message passing)"]:::meshNode
+    C[" <b>Mesh Nodes</b><br/>(processor graph<br/>m2m message passing)"]:::meshNode
     
     %% Standard, safe syntax for the loop
     C -- "m2m × K rounds" --> C
@@ -166,7 +166,7 @@ end
 
 D["<b>m2g Decoder</b><br/>(mesh → grid<br/>KD-tree nearest)"]:::modelNode
 
-E["📊 <b>Predictions</b><br/>(forecast at each<br/>grid point)"]:::dataNode
+E[" <b>Predictions</b><br/>(forecast at each<br/>grid point)"]:::dataNode
 
 %% ---------- CONNECTIONS ----------
 A --> B
