@@ -143,16 +143,39 @@ neural-lam uses an **Encoder-Processor-Decoder** GNN architecture. Atmospheric v
 
 ```mermaid
 flowchart LR
-    classDef default fill:#f8f9fa,stroke:#d1d5db,stroke-width:2px,rx:8px,color:#1f2937
-    classDef highlight fill:#e1f5fe,stroke:#0288d1,stroke-width:2px,rx:8px,color:#0f172a
 
-    A["🌍 Grid Nodes\n(atmospheric data points\nat lat/lon positions)"]:::highlight
-    B["g2m Encoder\n(grid → mesh\nKD-tree nearest)"]
-    C["🔷 Mesh Nodes\n(processor graph\nm2m message passing)"]:::highlight
-    D["m2g Decoder\n(mesh → grid\nKD-tree nearest)"]
-    E["📊 Predictions\n(forecast at each\ngrid point)"]:::highlight
+%% ---------- STYLE DEFINITIONS ----------
+classDef dataNode fill:#e1f5fe,stroke:#0288d1,stroke-width:2px,color:#0f172a,rx:8px
+classDef modelNode fill:#ffffff,stroke:#d1d5db,stroke-width:1px,color:#1f2937,rx:4px
+classDef meshNode fill:#e1f5fe,stroke:#0288d1,stroke-width:2px,font-weight:bold,color:#0f172a,rx:8px
 
-    A --> B --> C -->|"m2m × K rounds"| C --> D --> E
+%% ---------- NODES ----------
+A["🌍 <b>Grid Nodes</b><br/>(atmospheric data points<br/>at lat/lon positions)"]:::dataNode
+
+B["<b>g2m Encoder</b><br/>(grid → mesh<br/>KD-tree nearest)"]:::modelNode
+
+subgraph ENGINE ["Neural Processing Engine"]
+    %% This direction strictly controls the loop, forcing a clean, tight curve
+    direction TB
+    
+    C["🔷 <b>Mesh Nodes</b><br/>(processor graph<br/>m2m message passing)"]:::meshNode
+    
+    %% Standard, safe syntax for the loop
+    C -- "m2m × K rounds" --> C
+end
+
+D["<b>m2g Decoder</b><br/>(mesh → grid<br/>KD-tree nearest)"]:::modelNode
+
+E["📊 <b>Predictions</b><br/>(forecast at each<br/>grid point)"]:::dataNode
+
+%% ---------- CONNECTIONS ----------
+A --> B
+B --> C
+C --> D
+D --> E
+
+%% ---------- STYLING ----------
+style ENGINE fill:#f8fafc,stroke:#cbd5e1,stroke-dasharray: 5 5
 ```
 
 The mesh topology **directly determines** what the model can learn. The number of message-passing steps needed for information to traverse the domain equals the graph diameter. Edge features encode spatial relationships. Yet today, **only regular rectangular grids** are supported, because `create_graph.py` hardcodes `networkx.grid_2d_graph(Nx, Ny)`.
