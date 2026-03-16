@@ -86,19 +86,51 @@ This project delivers a **five-layer solution**. Layers 1–3 are the **core del
 
 ```mermaid
 graph TD
-    classDef default fill:#f8f9fa,stroke:#d1d5db,stroke-width:2px,rx:8px,color:#1f2937
-    classDef highlight fill:#e1f5fe,stroke:#0288d1,stroke-width:2px,rx:8px,color:#0f172a
 
-    CORE["★ CORE DELIVERABLES — Guaranteed, Weeks 1–6"]:::highlight
-    CORE --> L1["Layer 1: Foundation\nmesh_layout PR#81 · triangular PR#92\nprebuilt PR#91 · v0.4.0 fixes #40/#42/#45"]
-    CORE --> L2["Layer 2: Bridge — Issue #384\nbuild_graph.py replaces create_graph.py\nGraphFormatValidator · enhanced to_pyg()"]
-    CORE --> L3["Layer 3: Architecture — Issue #385\npyg.HeteroData migration\nadapter → refactor → native loading"]
+%% ---------- STYLE DEFINITIONS ----------
+classDef layer fill:#ffffff,stroke:#3b82f6,stroke-width:2px,color:#1e293b,rx:8px
+classDef titleStyle fill:#1e3a8a,color:#ffffff,stroke:none,font-weight:bold,rx:4px
+classDef highlight fill:#e1f5fe,stroke:#0288d1,stroke-width:2px,color:#0f172a,rx:8px
 
-    STRETCH["★ STRETCH GOALS — Modular, Weeks 7–11"]:::highlight
-    STRETCH --> L4["Layer 4: Advanced Research\nQuality Metrics · AMR · xr.DataTree\nMulti-source fusion · Density-adaptive"]
-    STRETCH --> L5["Layer 5: Cutting-Edge Innovations\nSpherical CoordinateSystem · Topology Benchmark\nStretched-grid · Learned coarsening\nDynamic edges · Analysis dashboard"]
+%% ---------- TOP SECTION: DELIVERABLES ----------
+subgraph TRACKS [" "]
+    direction LR
+    CORE["★ CORE DELIVERABLES<br/>(Guaranteed, Weeks 1–6)"]:::titleStyle
+    STRETCH["★ STRETCH GOALS<br/>(Modular, Weeks 7–11)"]:::titleStyle
+end
 
-    L1 --> L2 --> L3 --> L4 --> L5
+%% ---------- MIDDLE SECTION: CORE LAYERS ----------
+subgraph CORE_ROW ["CORE ARCHITECTURE"]
+    direction TB
+    L1["<div style='width:320px; text-align:left; padding:5px;'>🚀 <b>Layer 1: Foundation</b><br/>● mesh_layout PR#81 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>● triangular PR#92 (prebuilt PR#91)<br/>● v0.4.0 fixes #40/#42/#45</div>"]:::layer
+    
+    L2["<div style='width:320px; text-align:left; padding:5px;'>⚙️ <b>Layer 2: Bridge — Issue #384</b><br/>● build_graph.py replaces create_graph.py<br/>● GraphFormatValidator<br/>● Enhanced to_pyg()</div>"]:::layer
+    
+    L3["<div style='width:320px; text-align:left; padding:5px;'>🧠 <b>Layer 3: Architecture — Issue #385</b><br/>● pyg.HeteroData migration<br/>● adapter → refactor → native loading</div>"]:::layer
+end
+
+%% ---------- BOTTOM SECTION: STRETCH LAYERS ----------
+subgraph ADV_ROW ["ADVANCED RESEARCH"]
+    direction TB
+    L4["<div style='width:320px; text-align:left; padding:5px;'>🔬 <b>Layer 4: Advanced Research</b><br/>● Quality Metrics · AMR · xr.DataTree<br/>● Multi-source fusion<br/>● Density-adaptive</div>"]:::layer
+    
+    L5["<div style='text-align:left; width:320px; padding:5px;'>✨ <b>Layer 5: Cutting-Edge Innovations</b><br/>● Spherical Coordination System<br/>● Topology Benchmark<br/>● Learned coarsening  ● Stretched-grid<br/>● Dynamic edges  ● Analysis dashboard</div>"]:::layer
+end
+
+%% ---------- CONNECTIONS ----------
+CORE ==> CORE_ROW
+STRETCH ==> ADV_ROW
+
+%% Sequence Flow
+L1 --> L2
+L2 --> L3
+L3 -.-> L4
+L4 --> L5
+
+%% ---------- STYLING ----------
+style TRACKS fill:none,stroke:none
+style CORE_ROW fill:#f8fafc,stroke:#cbd5e1
+style ADV_ROW fill:#f8fafc,stroke:#cbd5e1
 ```
 
 <div style="page-break-after: always;"></div>
