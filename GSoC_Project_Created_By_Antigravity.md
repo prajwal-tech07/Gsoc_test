@@ -1,12 +1,29 @@
-# Google Summer of Code 2026 Proposal
+<div align="center">
 
-## Flexible Graph Construction: A Unified Pipeline for Universal Graph Topologies in Neural Weather Prediction
+<img src="gsoc_mllam_header.png" alt="GSoC 2026 × MLLAM" width="700"/>
+
+---
+
+# Flexible Graph Construction
+
+### *A Unified Pipeline for Universal Graph Topologies in Neural Weather Prediction*
+
+**Google Summer of Code 2026 Proposal**
+
+</div>
+
+<br/>
+
+<div align="center">
 
 | | |
 | :--- | :--- |
-| <ul><li>**Organization:** MLLAM (Machine Learning for Limited Area Models)</li></ul> | <ul><li>**Project Length:** 350 hours (Large)</li></ul> |
-| <ul><li>**Project:** [Flexible Graph Construction](https://github.com/mllam/neural-lam/wiki/GSoC-ideas#1-flexible-graph-construction) (Idea #1)</li></ul> | <ul><li>**Difficulty:** Medium</li></ul> |
-| <ul><li>**Repositories:** [weather-model-graphs](https://github.com/mllam/weather-model-graphs) (WMG), [neural-lam](https://github.com/mllam/neural-lam)</li></ul> | <ul><li>**Mentors:** Hauke Schulz ([@observingClouds](https://github.com/observingClouds)), Leif Denby ([@leifdenby](https://github.com/leifdenby)), Joel Oskarsson ([@joeloskarsson](https://github.com/joeloskarsson))</li></ul> |
+| **Organization:** MLLAM | **Project Length:** 350 hours (Large) |
+| **Project:** [Flexible Graph Construction](https://github.com/mllam/neural-lam/wiki/GSoC-ideas#1-flexible-graph-construction) (Idea #1) | **Difficulty:** Medium |
+| **Repositories:** [weather-model-graphs](https://github.com/mllam/weather-model-graphs), [neural-lam](https://github.com/mllam/neural-lam) | **Mentors:** Hauke Schulz, Leif Denby, Joel Oskarsson |
+| **Applicant:** Prajwal [Your Last Name] | **GitHub:** [prajwal-tech07](https://github.com/prajwal-tech07) |
+
+</div>
 
 ---
 
@@ -51,30 +68,48 @@
 
 ## 2. Community Engagement
 
-I have been actively contributing to both repositories with **substantive architectural PRs** — not cosmetic fixes:
+I have been actively contributing to both repositories with **substantive architectural PRs** — not cosmetic fixes. My engagement goes beyond code: through deep analysis and community discussions, I identified the fundamental gap between WMG and neural-lam and proposed the architectural solution that became the centerpiece of this proposal.
 
-> **Strategic Vision & Core Insight:** Bridging the gap via `HeteroData`
-> Through deep engagement with the codebase and active community discussions (notably [#339](https://github.com/mllam/neural-lam/issues/339)), I conceptualized and proposed the architectural idea of "bridging the gap" between WMG and Neural-LAM by migrating to PyTorch Geometric's `HeteroData` structure. This architectural direction — formalized in issues [#384](https://github.com/mllam/neural-lam/issues/384) and [#385](https://github.com/mllam/neural-lam/issues/385) — underpins the unified, heterogeneous graph foundation that drives this entire GSoC proposal.
+### 2.1 The Architectural Pillars: Issues #384 & #385
 
-### 2.1 weather-model-graphs Contributions
+Through active participation in the bridging discussion ([#339](https://github.com/mllam/neural-lam/issues/339)), I conceptualized the core architectural direction that this proposal implements. These ideas were subsequently formalized as two strategic issues that now serve as the **twin pillars** of this GSoC project:
 
-| PR / Issue | Title | Status | Impact & Milestone |
-|------------|-------|--------|---------------------|
-| [**PR #81**](https://github.com/mllam/weather-model-graphs/pull/81) | `mesh_layout` two-step architecture | **Under review** *(leifdenby: "95% done, well done!")* | **Core refactor** — decouples layout & connectivity (Target: v0.4) |
-| [PR #91](https://github.com/mllam/weather-model-graphs/pull/91) | `mesh_layout='prebuilt'` support | Open | Enables arbitrary mesh injection (Target: v0.5) |
-| [PR #92](https://github.com/mllam/weather-model-graphs/pull/92) | `mesh_layout='triangular'` (Delaunay) | Open | Enables non-rectangular meshes (Target: v0.5) |
-| [Issue #97](https://github.com/mllam/weather-model-graphs/issues/97) | `validate_graph_components()` | Open | Pre-export structural validation |
-| [Issue #98](https://github.com/mllam/weather-model-graphs/issues/98) | Node-ID-to-tensor-index mapping | Open | Lossless WMG ↔ neural-lam round-trips |
+```mermaid
+mindmap
+  root((**My Architectural Vision**<br/>Bridging WMG ↔ Neural-LAM))
+    **Pillar 1 — Issue #384**
+      Tensor-on-disk format bridge
+      build_graph.py replaces create_graph.py
+      GraphFormatValidator contract
+      Eliminates 600-line duplication
+    **Pillar 2 — Issue #385**
+      pyg.HeteroData migration
+      Typed graph representation
+      Single .to‹device› transfer
+      Extensible multi-source support
+    Foundation ‹My PRs›
+      PR #81 — mesh_layout architecture
+      PR #91 — prebuilt mesh pathway
+      PR #92 — triangular Delaunay mesh
+      PR #258 — area weights for metrics
+```
 
-### 2.2 neural-lam Contributions
+> **Why these matter:** Issues [#384](https://github.com/mllam/neural-lam/issues/384) and [#385](https://github.com/mllam/neural-lam/issues/385) together define the path from the current fragmented, rectangular-only graph pipeline to a unified, topology-agnostic architecture. Every other contribution in this proposal — from density-adaptive meshes to dynamic edge attention — builds on the foundation these pillars establish.
 
-| PR | Title | Status | Impact |
-|----|-------|--------|--------|
-| [**PR #258**](https://github.com/mllam/neural-lam/pull/258) | Area weights for metric computation | **Under review** | `cos(lat)` weighting through all 6 metrics |
+### 2.2 Code Contributions
+
+| PR / Issue | Repo | Title | Status | Impact |
+|------------|------|-------|--------|--------|
+| [**PR #81**](https://github.com/mllam/weather-model-graphs/pull/81) | WMG | `mesh_layout` two-step architecture | **Under review** *("95% done, well done!")* | **Core refactor** — decouples layout & connectivity |
+| [**PR #258**](https://github.com/mllam/neural-lam/pull/258) | neural-lam | Area weights for metric computation | **Under review** | `cos(lat)` weighting through all 6 metrics |
+| [PR #91](https://github.com/mllam/weather-model-graphs/pull/91) | WMG | `mesh_layout='prebuilt'` support | Open | Enables arbitrary mesh injection |
+| [PR #92](https://github.com/mllam/weather-model-graphs/pull/92) | WMG | `mesh_layout='triangular'` (Delaunay) | Open | Enables non-rectangular meshes |
+| [Issue #97](https://github.com/mllam/weather-model-graphs/issues/97) | WMG | `validate_graph_components()` | Open | Pre-export structural validation |
+| [Issue #98](https://github.com/mllam/weather-model-graphs/issues/98) | WMG | Node-ID-to-tensor-index mapping | Open | Lossless WMG ↔ neural-lam round-trips |
 
 ### 2.3 Depth of Understanding
 
-These contributions required reading **every source file** in both repos — `create/base.py`, `coords.py`, `flat.py`, `hierarchical.py`, `save.py`, `networkx_utils.py` in WMG; `create_graph.py` (614 lines), `base_graph_model.py`, `graph_lam.py`, `hi_lam.py`, `hi_lam_parallel.py`, `utils.py`, `metrics.py`, `interaction_net.py` in neural-lam.
+These contributions required studying **every source file** across both repositories — `create/base.py`, `coords.py`, `flat.py`, `hierarchical.py`, `save.py`, `networkx_utils.py` in WMG; `create_graph.py` (614 lines), `base_graph_model.py`, `graph_lam.py`, `hi_lam.py`, `hi_lam_parallel.py`, `utils.py`, `metrics.py`, `interaction_net.py` in neural-lam — giving me a comprehensive understanding of every integration point this project touches.
 
 <div style="page-break-after: always;"></div>
 
@@ -626,26 +661,38 @@ graph LR
 These modules represent cutting-edge research targets to be explored upon successful integration of the core architectural roadmap:
 
 ```mermaid
-graph TB
-    classDef sota fill:#f8fafc,stroke:#6366f1,stroke-width:2px,rx:8px,color:#312e81
+flowchart TB
+    classDef core fill:#eff6ff,stroke:#3b82f6,stroke-width:2px,rx:10px,color:#1e3a8a,font-weight:bold
+    classDef graph fill:#f0fdf4,stroke:#16a34a,stroke-width:2px,rx:10px,color:#14532d
+    classDef ml fill:#faf5ff,stroke:#9333ea,stroke-width:2px,rx:10px,color:#581c87
+    classDef io fill:#fff7ed,stroke:#ea580c,stroke-width:2px,rx:10px,color:#9a3412
 
-    SC["Spherical-Aware<br/>Graph Construction<br/>Haversine/Vincenty"]:::sota
-    LC["Learned Mesh<br/>Coarsening<br/>Weighted FPS"]:::sota
-    DE["Dynamic Edge<br/>Attention<br/>Weather-State-Aware"]:::sota
-    VZ["Graph Analysis<br/>Dashboard<br/>ERF · Spectrum · G2M"]:::sota
-    DT["xr.DataTree<br/>Self-Describing<br/>graph.zarr format"]:::sota
+    HUB["Layer 5<br/>SOTA Innovations"]:::core
 
-    SC --- LC --- DE
-    VZ --- DT
+    SC["🌐 Spherical-Aware<br/>Construction<br/>Haversine · Vincenty"]:::graph
+    LC["🔬 Learned Mesh<br/>Coarsening<br/>Weighted FPS · Spectral"]:::ml
+    DE["⚡ Dynamic Edge<br/>Attention<br/>Weather-State-Aware"]:::ml
+    VZ["📊 Analysis<br/>Dashboard<br/>ERF · Spectrum · G2M"]:::io
+    DT["📦 xr.DataTree<br/>Self-Describing<br/>graph.zarr + metadata"]:::io
+
+    HUB --> SC
+    HUB --> LC
+    HUB --> DE
+    HUB --> VZ
+    HUB --> DT
+
+    SC -.->|"correct distances"| LC
+    DE -.->|"visualize"| VZ
+    VZ -.->|"embed metrics"| DT
 ```
 
-| Innovation | Description | Research Basis |
-|-----------|-------------|----------------|
-| **Spherical-Aware Construction** | `CoordinateSystem` abstraction corrects KD-tree and edge features at global scales (2× distortion at lat=60°) | Haversine / Vincenty formulas |
-| **Learned Mesh Coarsening** | Weighted Farthest Point Sampling (wFPS) for topology-aware hierarchical coarsening | M4GN (2025) |
-| **Dynamic Edge Attention** | `DynamicEdgeAttention` selects edges per timestep based on atmospheric state | RTEC / TAEGCN (2024) |
-| **Analysis Dashboard** | `GraphAnalysisPlot` — receptive fields, Laplacian spectrum, G2M density maps | Extension of `plot_2d.py` |
-| **`xr.DataTree` Format** | Self-describing `graph.zarr/` with embedded metadata and quality metrics | Aligns with WMG PR #47 |
+| Innovation | What It Solves | Approach | Research Basis |
+|-----------|----------------|----------|----------------|
+| **🌐 Spherical Construction** | Euclidean distortion at global scales (2× at lat=60°, 5.7× at lat=80°) | `CoordinateSystem` abstraction with Haversine/Vincenty for KD-tree & edge features | Geodesic geometry |
+| **🔬 Learned Coarsening** | Rigid stride-based coarsening ignores terrain features | Weighted FPS + spectral clustering preserving Fiedler value | M4GN (2025) |
+| **⚡ Dynamic Edges** | Static graphs can't adapt to moving weather systems | `DynamicEdgeAttention` selects per-timestep edges via learned attention | RTEC / TAEGCN (2024) |
+| **📊 Analysis Dashboard** | No tools to visually understand WHY a topology works | `GraphAnalysisPlot`: receptive field heatmaps, Laplacian spectrum, G2M density | Extends `plot_2d.py` |
+| **📦 DataTree Format** | Opaque `.pt` files with no provenance metadata | Self-describing `graph.zarr/` tree with quality metrics + generation params | Aligns with WMG PR #47 |
 
 <div style="page-break-after: always;"></div>
 
