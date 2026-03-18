@@ -6,7 +6,7 @@
 | :--- | :--- |
 | <ul><li>**Organization:** MLLAM (Machine Learning for Limited Area Models)</li></ul> | <ul><li>**Project Length:** 350 hours (Large)</li></ul> |
 | <ul><li>**Project:** [Flexible Graph Construction](https://github.com/mllam/neural-lam/wiki/GSoC-ideas#1-flexible-graph-construction) (Idea #1)</li></ul> | <ul><li>**Difficulty:** Medium</li></ul> |
-| <ul><li>**Repositories:** [weather-model-graphs](https://github.com/mllam/weather-model-graphs) (WMG), [neural-lam](https://github.com/mllam/neural-lam)</li></ul> | <ul><li>**Mentors:** Hauke Schulz ([@observingClouds](https://github.com/observingClouds)), Leif Denby ([@leifdenby](https://github.com/leifdenby)), Joel Oskarsson ([@joeloskarsson](https://github.com/joeloskarsson))</li></ul>
+| <ul><li>**Repositories:** [weather-model-graphs](https://github.com/mllam/weather-model-graphs) (WMG), [neural-lam](https://github.com/mllam/neural-lam)</li></ul> | <ul><li>**Mentors:** Hauke Schulz ([@observingClouds](https://github.com/observingClouds)), Leif Denby ([@leifdenby](https://github.com/leifdenby)), Joel Oskarsson ([@joeloskarsson](https://github.com/joeloskarsson))</li></ul> |
 
 ---
 
@@ -19,12 +19,10 @@
 5. [Current Architecture Deep-Dive](#5-current-architecture-deep-dive)
 6. [Proposed Solution & Technical Design](#6-proposed-solution--technical-design)
 7. [Advanced Research Contributions (Layers 4 & 5)](#7-advanced-research-contributions-layers-4--5)
-8. [Weekly Timeline](#8-weekly-timeline)
-9. [Testing Strategy](#9-testing-strategy)
-10. [Deliverables](#10-deliverables)
-11. [Risk Mitigation](#11-risk-mitigation)
-12. [References](#12-references)
-13. [Other Commitments](#13-other-commitments)
+8. [Development Timeline & Deliverables](#8-development-timeline--deliverables)
+9. [Risk Mitigation](#9-risk-mitigation)
+10. [References](#10-references)
+11. [Other Commitments](#11-other-commitments)
 
 ---
 
@@ -56,7 +54,7 @@
 I have been actively contributing to both repositories with **substantive architectural PRs** — not cosmetic fixes:
 
 > **Strategic Vision & Core Insight:** Bridging the gap via `HeteroData`
-> Through deep engagement with the codebase and active community discussions, I conceptualized and proposed the architectural idea of "bridging the gap" between WMG and Neural-LAM by migrating to PyTorch Geometric's `HeteroData` structure. This shift—from fragmented multi-tensor storage to a unified, heterogeneous graph foundation—streamlines the graph construction pipeline and serves as the driving centerpiece of this GSoC proposal.
+> Through deep engagement with the codebase and active community discussions (notably [#339](https://github.com/mllam/neural-lam/issues/339)), I conceptualized and proposed the architectural idea of "bridging the gap" between WMG and Neural-LAM by migrating to PyTorch Geometric's `HeteroData` structure. This architectural direction — formalized in issues [#384](https://github.com/mllam/neural-lam/issues/384) and [#385](https://github.com/mllam/neural-lam/issues/385) — underpins the unified, heterogeneous graph foundation that drives this entire GSoC proposal.
 
 ### 2.1 weather-model-graphs Contributions
 
@@ -274,9 +272,9 @@ grid_graph = networkx.grid_2d_graph(xy.shape[1], xy.shape[2])  # ← RECTANGULAR
 # ... [remainder builds g2m/m2m/m2g from this rectangular assumption]
 ```
 
-### 4.5 A Key Opportunity for Enhancement: Quality Guarantees
+### 4.5 The Opportunity: Quality Guarantees for Flexible Meshes
 
-Once flexible meshes are enabled, a natural next step is providing a mechanism to evaluate whether a generated mesh is well-suited for message-passing. Currently, users hve no qauantitative guidance on questions like:
+Once flexible meshes are enabled, a natural next step is providing a mechanism to evaluate whether a generated mesh is well-suited for message-passing. Currently, users have no quantitative guidance on questions like:
 
 - Does the mesh have uniform edge-length distribution? (isotropy)
 - Does the mesh cover the data domain without gaps? (coverage)
@@ -526,70 +524,136 @@ data['mesh', 'm2g', 'grid_nwp'].edge_index        # mesh → NWP predictions
 ### 7.1 Graph Quality Metrics Framework (Layer 4)
 
 Provides a `GraphQualityReport` to quantify mesh quality *before* expensive model training across four dimensions:
-1. **Isotropy (edge-length uniformity):** Lower coefficient of variation (CV) ensures edges carry proportionate influence.
-2. **Coverage (Voronoi ratio):** Measures how completely the mesh covers the data domain.
-3. **Spectral Gap (Fiedler value):** Larger values mean faster mixing and better message-passing efficiency.
-4. **G2M Balance:** Measures grid node distribution across mesh nodes to prevent orphaned nodes.
+
+```mermaid
+graph TD
+    classDef dim fill:#f0f9ff,stroke:#0284c7,stroke-width:2px,rx:8px,color:#0c4a6e
+    classDef main fill:#1e3a8a,color:#ffffff,stroke:none,font-weight:bold,rx:6px
+
+    QR["GraphQualityReport"]:::main
+
+    D1["<b>Isotropy</b><br/>CV of edge lengths<br/>Lower CV → uniform influence"]:::dim
+    D2["<b>Coverage</b><br/>Voronoi ∩ Hull ratio<br/>Higher → better domain fill"]:::dim
+    D3["<b>Spectral Gap</b><br/>Fiedler eigenvalue λ₂<br/>Larger → faster mixing"]:::dim
+    D4["<b>G2M Balance</b><br/>CV of mesh-node degree<br/>Lower → even load"]:::dim
+
+    QR --> D1
+    QR --> D2
+    QR --> D3
+    QR --> D4
+```
+
+| Metric | Formula | Good Threshold | What It Reveals |
+|--------|---------|----------------|-----------------|
+| **Isotropy** | CV(edge_lengths) = σ/μ | CV < 0.3 | Edge uniformity for proportionate influence |
+| **Coverage** | area(Voronoi ∩ Hull) / area(Hull) | > 0.95 | Domain coverage without gaps |
+| **Spectral Gap** | λ₂ (Fiedler value of Laplacian) | > 0.01 | Message-passing mixing speed |
+| **G2M Balance** | CV(mesh_node_g2m_degree) | CV < 0.5 | Even grid-to-mesh load distribution |
 
 ### 7.2 Density-Adaptive Mesh Generation (Layer 4)
 
-Uniform meshes fail over irregular data. This algorithm builds adaptive spacings:
+Uniform meshes waste nodes in data-sparse regions. This algorithm builds adaptive spacings using Voronoi cell areas:
 
-```text
-DENSITY-ADAPTIVE MESH NODE PLACEMENT
---------------------------------------------------
-Methods fail with uniform grids over oceans:
-Data:       Mesh (uniform):
-. . . .     O  O  O  O  <- Too many nodes over 
-. . . .     O  O  O  O      ocean (sparse data)
-. . . .     O  O  O  O
-  .         O  O  O  O
-      .     O  O  O  O  <- Too few nodes over
-  .         O  O  O  O      land (dense data)
+```mermaid
+flowchart LR
+    classDef input fill:#fef3c7,stroke:#d97706,stroke-width:2px,rx:6px,color:#92400e
+    classDef process fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,rx:6px,color:#0c4a6e
+    classDef output fill:#dcfce7,stroke:#16a34a,stroke-width:2px,rx:6px,color:#14532d
 
-New method uses Voronoi cell areas to scale mesh:
-Mesh (density-adaptive):
-O O O O O O    <- Dense mesh where data is dense
-O O O O O O 
-    O          <- Sparse mesh where data is sparse
-        O
+    A["Scattered Data<br/>Points"]:::input
+    B["Voronoi Cell<br/>Area Estimation"]:::process
+    C["Density →<br/>Spacing Map"]:::process
+    D["Variable-Radius<br/>Poisson Disk<br/>Sampling"]:::process
+    E["Delaunay<br/>Triangulation"]:::process
+    F["Adaptive<br/>Mesh Graph"]:::output
+
+    A --> B --> C --> D --> E --> F
 ```
 
-**Algorithm:**
-1. Compute Voronoi areas for local density mapping.
-2. Scale local spacing functionally based on `base_mesh_distance`.
-3. Apply variable-radius Poisson disk sampling & Delaunay triangulation.
+**Key parameters:** `base_mesh_distance` (baseline spacing), `density_scaling` (0.0 = uniform → 1.0 = fully proportional), `min/max_mesh_distance` (degenerate element clamps).
 
 ### 7.3 Adaptive Mesh Refinement — AMR (Layer 4)
 
-A machine-learning feedback loop where mesh structures adapt locally to minimize error:
-1. Train with the initial mesh.
-2. Map per-grid-point prediction errors.
-3. Define spacing computationally via Gaussian KDE: `spacing(x) = base / (1 + factor * kde(x))`.
-4. Render new mesh and retrain. 
+A machine-learning feedback loop where mesh structures adapt locally to minimize prediction error:
+
+```mermaid
+flowchart TD
+    classDef train fill:#eff6ff,stroke:#3b82f6,stroke-width:2px,rx:6px,color:#1e3a8a
+    classDef analyze fill:#fef3c7,stroke:#d97706,stroke-width:2px,rx:6px,color:#92400e
+    classDef refine fill:#dcfce7,stroke:#16a34a,stroke-width:2px,rx:6px,color:#14532d
+
+    T["Train on<br/>Initial Mesh"]:::train
+    A["Map Per-Point<br/>Prediction Errors"]:::analyze
+    K["Gaussian KDE<br/>Error Density"]:::analyze
+    R["Generate Refined Mesh<br/>spacing = base / (1 + α · kde)"]:::refine
+    RT["Retrain on<br/>Refined Mesh"]:::train
+
+    T --> A --> K --> R --> RT
+    RT -.->|"iterate"| A
+```
+
+Research basis: G-Adaptivity (2024) for GNN mesh movement, Multiscale AMR-GNN (2023) for over-smoothing mitigation.
 
 ### 7.4 Stretched-Grid & Topology Benchmarks (Layer 5)
 
-* **Topology Benchmarking Suite (`wmg_benchmark.py`):** Ranks constructed domains dynamically against Information Propagation Diameter (IPD), Effective Receptive Field (ERF), and Edge Efficiency Ratios. 
-* **Stretched Grids:** Support for regional resolutions tapering outward—matching the ECMWF AIFS blueprint natively within our `create_all_graph_components()` workflow.
+```mermaid
+graph LR
+    classDef bench fill:#f0fdf4,stroke:#22c55e,stroke-width:2px,rx:6px,color:#14532d
+    classDef stretch fill:#faf5ff,stroke:#9333ea,stroke-width:2px,rx:6px,color:#581c87
+
+    subgraph BENCH ["Topology Benchmarking Suite"]
+        direction TB
+        B1["IPD: Info Propagation<br/>Diameter"]:::bench
+        B2["ERF: Effective<br/>Receptive Field"]:::bench
+        B3["EER: Edge<br/>Efficiency Ratio"]:::bench
+    end
+
+    subgraph STRETCHED ["Stretched-Grid Architecture"]
+        direction TB
+        S1["Define focus_center<br/>+ focus_radius"]:::stretch
+        S2["Sigmoid spacing<br/>transition"]:::stretch
+        S3["Variable Poisson<br/>disk + Delaunay"]:::stretch
+    end
+
+    BENCH ---|"rank topologies<br/>WITHOUT training"| STRETCHED
+```
+
+* **Topology Benchmarking Suite (`wmg_benchmark.py`):** Ranks constructed domains dynamically against IPD, ERF, and Edge Efficiency Ratios — enabling topology comparison *without model training*.
+* **Stretched Grids:** Support for regional high-resolution tapering outward — matching the ECMWF AIFS blueprint natively within the `create_all_graph_components()` workflow.
 
 ### 7.5 State-of-the-Art Sub-Components (Layer 5)
 
-These modules represent cutting-edge research targets to be explored upon successful integration of the core architectural roadmap. 
+These modules represent cutting-edge research targets to be explored upon successful integration of the core architectural roadmap:
 
-* **Spherical-Aware Graph Construction:** WMG currently leverages Euclidean distances, systematically distorting calculations at global scales (e.g., 2× distortion at lat=60°). A native `CoordinateSystem` abstraction (Haversine/Vincenty formulas) will correct Kd-tree generation and edge features.
-* **Learned Mesh Coarsening for Hierarchical Graphs:** Replacing rigid N-stride node selection with **Weighted Farthest Point Sampling (wFPS)**. High-gradient geographic regions (mountains, coastlines) selectively retain resolution compared to flat terrain.
-* **Weather-State-Aware Dynamic Graphs:** Implementing a `DynamicEdgeAttention` mechanism within Neural-LAM. WMG builds a superset of possible structural edges; Neural-LAM learns to dynamically thin/weight them via attention based on the *active* atmospheric state (e.g., routing density dynamically around a moving cyclone).
-* **Graph Visualization & Analysis Dashboard:** Extending `plot_2d.py` into a fully analytic module (`GraphAnalysisPlot`) mapping Receptive Fields, Laplacian Eigenvalue Spectrum, and G2M connection densities.
-* **Self-Describing `xr.DataTree` Output Format:** Replacing the loosely associated `.pt` dicts with a unified `graph.zarr/` tree, appending complete generation metadata and quality metrics for straightforward scientific reproduction.
+```mermaid
+graph TB
+    classDef sota fill:#f8fafc,stroke:#6366f1,stroke-width:2px,rx:8px,color:#312e81
+
+    SC["Spherical-Aware<br/>Graph Construction<br/>Haversine/Vincenty"]:::sota
+    LC["Learned Mesh<br/>Coarsening<br/>Weighted FPS"]:::sota
+    DE["Dynamic Edge<br/>Attention<br/>Weather-State-Aware"]:::sota
+    VZ["Graph Analysis<br/>Dashboard<br/>ERF · Spectrum · G2M"]:::sota
+    DT["xr.DataTree<br/>Self-Describing<br/>graph.zarr format"]:::sota
+
+    SC --- LC --- DE
+    VZ --- DT
+```
+
+| Innovation | Description | Research Basis |
+|-----------|-------------|----------------|
+| **Spherical-Aware Construction** | `CoordinateSystem` abstraction corrects KD-tree and edge features at global scales (2× distortion at lat=60°) | Haversine / Vincenty formulas |
+| **Learned Mesh Coarsening** | Weighted Farthest Point Sampling (wFPS) for topology-aware hierarchical coarsening | M4GN (2025) |
+| **Dynamic Edge Attention** | `DynamicEdgeAttention` selects edges per timestep based on atmospheric state | RTEC / TAEGCN (2024) |
+| **Analysis Dashboard** | `GraphAnalysisPlot` — receptive fields, Laplacian spectrum, G2M density maps | Extension of `plot_2d.py` |
+| **`xr.DataTree` Format** | Self-describing `graph.zarr/` with embedded metadata and quality metrics | Aligns with WMG PR #47 |
 
 <div style="page-break-after: always;"></div>
 
-## 8. Development Timeline & Core Deliverables
+## 8. Development Timeline & Deliverables
 
-This roadmap distills execution into 5 structured phases over 12 weeks, ensuring **Layers 1–3** (the "Core Deliverables") are solidly completed by Midterm, while safely sandboxing **Layers 4 & 5** (the modular "Alpha/Stretch Research Goals") for the latter half.
+This roadmap distills execution into 5 structured phases over 12 weeks, ensuring **Layers 1–3** (the "Core Deliverables") are solidly completed by Midterm, while safely sandboxing **Layers 4 & 5** (the modular stretch goals) for the latter half.
 
-> **Note on Process:** All architecture will undergo rigorous Test-Driven Development (E2E Integration, Property Invariants, Backwards-Compatibility Regression).
+> **Note on Process:** All architecture will undergo rigorous Test-Driven Development (E2E integration, property invariants, backwards-compatibility regression).
 
 ### ☀️ Community Bonding (May 8 – June 1)
 | Focus Area | Output Artifacts |
@@ -628,7 +692,7 @@ This roadmap distills execution into 5 structured phases over 12 weeks, ensuring
 
 ---
 
-## 11. Risk Mitigation
+## 9. Risk Mitigation
 
 | Risk | Prob. | Impact | Mitigation |
 |------|-------|--------|------------|
@@ -641,7 +705,7 @@ This roadmap distills execution into 5 structured phases over 12 weeks, ensuring
 
 ---
 
-## 12. References
+## 10. References
 
 ### Key Issues & PRs
 
@@ -669,7 +733,7 @@ This roadmap distills execution into 5 structured phases over 12 weeks, ensuring
 
 ---
 
-## 13. Other Commitments
+## 11. Other Commitments
 
 - [List exams, classes, holidays, jobs, internships here]
 - Available 30–35 hours/week during the coding period
@@ -686,7 +750,7 @@ This roadmap distills execution into 5 structured phases over 12 weeks, ensuring
 
 ## Summary
 
-This proposal addresses [GSoC Idea #1: Flexible Graph Construction](https://github.com/mllam/neural-lam/wiki/GSoC-ideas#1-flexible-graph-construction) through a **five-layer architecture** with **30 deliverables**:
+This proposal addresses [GSoC Idea #1: Flexible Graph Construction](https://github.com/mllam/neural-lam/wiki/GSoC-ideas#1-flexible-graph-construction) through a **five-layer architecture** with **15 deliverables**:
 
 1. **Layer 1 (Foundation):** PRs #81, #91, #92, #258 + v0.4.0 blockers #40, #42, #45
 2. **Layer 2 (Bridge — #384):** `build_graph.py` + `GraphFormatValidator` eliminates 600-line duplication
@@ -695,15 +759,15 @@ This proposal addresses [GSoC Idea #1: Flexible Graph Construction](https://gith
 5. **Layer 5 (Cutting-Edge):** Spherical CoordinateSystem · Topology Benchmark Suite · Stretched-Grid · Learned Coarsening · Dynamic Edge Attention · Analysis Dashboard
 
 **What makes this proposal extraordinary:**
-- **No one else has proposed** a topology benchmarking suite that ranks meshes WITHOUT training
-- **No one else has proposed** spherical-aware graph construction that fixes systematic polar distortion
-- **No one else has proposed** dynamic weather-state-aware edge selection backed by RTEC/TAEGCN (2024)
-- **No one else has proposed** learned spectral coarsening preserving the graph's Fiedler value
+- A **topology benchmarking suite** that ranks meshes WITHOUT training
+- **Spherical-aware graph construction** that fixes systematic polar distortion
+- **Dynamic weather-state-aware edge selection** backed by RTEC/TAEGCN (2024)
+- **Learned spectral coarsening** preserving the graph's Fiedler value
 
 Every deliverable maps to an open issue, mentor priority, or novel research contribution. Full backward compatibility while enabling graph construction from **any spatial data distribution** — from regular rectangular grids to scattered ship observations.
 
 ---
 
 *Proposal prepared by: Prajwal [Your Last Name]*
-*Last updated: March 15, 2026*
+*Last updated: March 18, 2026*
 *GitHub: [github.com/prajwal-tech07](https://github.com/prajwal-tech07)*
