@@ -521,310 +521,67 @@ data['mesh', 'm2g', 'grid_nwp'].edge_index        # mesh → NWP predictions
 
 ## 7. Advanced Research Contributions (Layers 4 & 5)
 
-> **This is where this proposal goes significantly beyond the bridge/HeteroData integration.** Layers 1–3 are core; everything below is a **modular stretch goal** — each self-contained, each adding independent value.
+> **Strategic Note:** Layers 1–3 are core deliverables. The following mechanisms represent **modular stretch goals** that directly advance the state-of-the-art in graph-based neural weather prediction.
 
-### 7.1 Graph Quality Metrics Framework (NOVEL · Layer 4)
+### 7.1 Graph Quality Metrics Framework (Layer 4)
 
-A `GraphQualityReport` module that quantifies mesh quality across **4 dimensions**, giving users quantitative answers before committing to expensive model training:
+Provides a `GraphQualityReport` to quantify mesh quality *before* expensive model training across four dimensions:
+1. **Isotropy (edge-length uniformity):** Lower coefficient of variation (CV) ensures edges carry proportionate influence.
+2. **Coverage (Voronoi ratio):** Measures how completely the mesh covers the data domain.
+3. **Spectral Gap (Fiedler value):** Larger values mean faster mixing and better message-passing efficiency.
+4. **G2M Balance:** Measures grid node distribution across mesh nodes to prevent orphaned nodes.
 
-**Dimension 1 — Isotropy (edge-length uniformity):**
-The coefficient of variation (CV = std/mean) of edge lengths measures how uniform the mesh spacing is. A perfectly regular rectangular mesh has CV ≈ 0.17 (cardinal vs diagonal edges). A good Delaunay mesh has CV < 0.3. A poorly constructed mesh has CV > 0.6. High CV means some edges carry disproportionate influence in message passing.
+### 7.2 Density-Adaptive Mesh Generation (Layer 4)
 
-**Dimension 2 — Coverage (Voronoi area ratio):**
-For each mesh node, compute its Voronoi cell. The ratio `area(union_of_Voronoi_cells ∩ ConvexHull) / area(ConvexHull)` measures how completely the mesh covers the data domain. Also reports `max_gap` — the maximum distance from any grid node to its nearest mesh node. Gaps mean some grid nodes are poorly represented.
+Uniform meshes fail over irregular data. This algorithm builds adaptive spacings:
 
-**Dimension 3 — Spectral Gap (Fiedler value):**
-The second-smallest eigenvalue λ₂ of the graph Laplacian (the Fiedler value) measures message-passing efficiency. Larger λ₂ → faster mixing → fewer message-passing rounds needed for global information flow. Near-zero λ₂ → graph has a bottleneck → poorly connected.
+```text
+DENSITY-ADAPTIVE MESH NODE PLACEMENT
+--------------------------------------------------
+Methods fail with uniform grids over oceans:
+Data:       Mesh (uniform):
+. . . .     O  O  O  O  <- Too many nodes over 
+. . . .     O  O  O  O      ocean (sparse data)
+. . . .     O  O  O  O
+  .         O  O  O  O
+      .     O  O  O  O  <- Too few nodes over
+  .         O  O  O  O      land (dense data)
 
-**Dimension 4 — G2M Balance (load distribution):**
-The CV of mesh-node in-degree in the g2m graph measures how evenly grid nodes distribute across mesh nodes. Also reports `grid_orphan_count` — the number of grid nodes connected to zero mesh nodes (should always be 0, which is exactly Issue #42).
-
-```python
-# weather_model_graphs/quality.py (NEW)
-class GraphQualityReport:
-    def __init__(self, graph_components: dict):
-        self.components = graph_components
-
-    def _compute_isotropy(self) -> dict:
-        lengths = [d["len"] for _, _, d in self.components["m2m"].edges(data=True)]
-        return {"edge_length_cv": np.std(lengths) / np.mean(lengths)}
-
-    def _compute_spectral(self) -> dict:
-        L = nx.laplacian_matrix(self.components["m2m"].to_undirected()).toarray()
-        return {"fiedler_value": np.sort(np.linalg.eigvalsh(L))[1]}
-    # ... [coverage, g2m_balance, summary(), passes_thresholds() omitted]
+New method uses Voronoi cell areas to scale mesh:
+Mesh (density-adaptive):
+O O O O O O    <- Dense mesh where data is dense
+O O O O O O 
+    O          <- Sparse mesh where data is sparse
+        O
 ```
 
-### 7.2 Density-Adaptive Mesh Generation (NOVEL · Layer 4)
+**Algorithm:**
+1. Compute Voronoi areas for local density mapping.
+2. Scale local spacing functionally based on `base_mesh_distance`.
+3. Apply variable-radius Poisson disk sampling & Delaunay triangulation.
 
-For sparse or clustered data (weather stations, ship tracks), uniform mesh spacing wastes nodes over sparse regions while under-resolving dense clusters. The algorithm:
+### 7.3 Adaptive Mesh Refinement — AMR (Layer 4)
 
-1. Compute Voronoi cell areas for each data point → local density estimate
-2. Map density to local mesh spacing: `spacing(x) = base / (density(x) / max_density)^scaling`
-3. Apply variable-radius Poisson disk sampling with the local spacing function
-4. Delaunay triangulation for connectivity
+A machine-learning feedback loop where mesh structures adapt locally to minimize error:
+1. Train with the initial mesh.
+2. Map per-grid-point prediction errors.
+3. Define spacing computationally via Gaussian KDE: `spacing(x) = base / (1 + factor * kde(x))`.
+4. Render new mesh and retrain. 
 
-```python
-# weather_model_graphs/create/mesh/density_adaptive.py (NEW)
-def create_density_adaptive_mesh(xy, base_mesh_distance, density_scaling=0.5):
-    vor = Voronoi(xy)
-    density = 1.0 / np.clip(_compute_voronoi_cell_areas(vor), 1e-10, None)
-    local_spacing = base_mesh_distance / (density / density.max()) ** density_scaling
-    mesh_positions = _variable_radius_poisson_disk(bounds, local_spacing, xy)
-    return _build_delaunay_digraph(mesh_positions)
-```
+### 7.4 Stretched-Grid & Topology Benchmarks (Layer 5)
 
-### 7.3 Adaptive Mesh Refinement — AMR (NOVEL · Layer 4)
+* **Topology Benchmarking Suite (`wmg_benchmark.py`):** Ranks constructed domains dynamically against Information Propagation Diameter (IPD), Effective Receptive Field (ERF), and Edge Efficiency Ratios. 
+* **Stretched Grids:** Support for regional resolutions tapering outward—matching the ECMWF AIFS blueprint natively within our `create_all_graph_components()` workflow.
 
-The most **research-forward** contribution. After training, identify regions where the model performs poorly and automatically densify the mesh there. This creates a feedback loop where the mesh adapts to where the model needs more resolution.
+### 7.5 State-of-the-Art Sub-Components (Layer 5)
 
-**The AMR Pipeline:**
+These modules represent cutting-edge research targets to be explored upon successful integration of the core architectural roadmap. 
 
-```mermaid
-flowchart LR
-    %% Professional Styling: Slate borders, crisp whites, and corporate blue highlights
-    classDef default fill:#ffffff,stroke:#64748b,stroke-width:2px,rx:6px,color:#1e293b
-    classDef highlight fill:#f0f9ff,stroke:#0284c7,stroke-width:2px,rx:6px,color:#0f172a
-
-    T1["<b>1. Train Model</b><br/>with initial mesh<br/>(uniform spacing)"]:::highlight
-    E["<b>2. Error Analysis</b><br/>Compute per-grid-point<br/>prediction errors"]
-    R["<b>3. Mesh Densification</b><br/>Gaussian KDE of errors<br/>→ local spacing function<br/>→ denser where errors high"]:::highlight
-    T2["<b>4. Retrain Model</b><br/>with refined mesh<br/>(adapted spacing)"]
-
-    %% Process flow
-    T1 --> E --> R --> T2
-    
-    %% Feedback loop
-    T2 -.->|"iterate until<br/>convergence"| E
-```
-
-**How it works in detail:**
-1. Train with the initial (uniform or density-adaptive) mesh
-2. Run validation and collect per-grid-point prediction errors (MSE per variable)
-3. Use Gaussian KDE to smooth the error field into a continuous density
-4. Compute refined spacing: `spacing(x) = base / (1 + factor * kde(x))` — smaller spacing where errors are large
-5. Generate new mesh with `create_density_adaptive_mesh()` using the refined spacing
-6. Retrain and iterate
-
-```python
-# weather_model_graphs/refine.py (NEW)
-def refine_mesh_from_errors(current_graph, grid_coords, prediction_errors,
-                            refinement_factor=2.0, error_percentile=90):
-    high_mask = prediction_errors > np.percentile(prediction_errors, error_percentile)
-    kde = gaussian_kde(grid_coords[high_mask].T, weights=prediction_errors[high_mask])
-    local_spacing = base_spacing / (1 + refinement_factor * kde(grid_coords.T))
-    return create_density_adaptive_mesh(grid_coords, base_spacing,
-                                         _custom_spacing_field=local_spacing)
-```
-
-**Research basis:** G-Adaptivity (2024, GNN mesh movement for CFD), Multiscale AMR-GNN (2023, hierarchical AMR for PDE solvers), Adaptive SST meshes (2024, Voronoi-induced artifacts from grid-to-mesh coupling).
-
-### 7.4 xr.DataTree Self-Describing Graph Format (NOVEL · Layer 4)
-
-Aligns with leifdenby's WMG PR #47. Replace the current opaque collection of `.pt` files with a self-describing `graph.zarr/` tree:
-
-| Aspect | Current (`.pt` files) | Proposed (`xr.DataTree`) |
-|--------|-----------------------|--------------------------|
-| Structure | 11 unnamed files, no organization | Tree: `g2m/`, `m2m/`, `m2g/`, `mesh/`, `metadata/` |
-| Provenance | None — which mesh_layout? what version? | `mesh_layout`, `m2m_connectivity`, `wmg_version`, `creation_time` |
-| Quality info | None | Embedded `quality_report` from GraphQualityReport |
-| Inspection | Must load into Python | NetCDF/Zarr ecosystem, `ncdump`, xarray |
-| Sharing | Opaque binary blobs | Standard scientific format with full metadata |
-
-### 7A. Cutting-Edge Innovations (Layer 5)
-
-> **These 6 research-backed innovations go far beyond the bridge/HeteroData integration. They directly advance the state-of-the-art in graph-based neural weather prediction.**
-
-### 7A.1 Spherical-Aware Graph Construction with Geodesic Distances (NOVEL)
-
-**The Problem:** Current WMG uses Euclidean distances in projected coordinates for ALL graph operations — KD-tree connections, edge lengths, mesh spacing. This introduces **systematic distortion** for domains larger than ~500km, and is fundamentally wrong for global models.
-
-Near poles, Euclidean distance **OVERESTIMATES** east-west distances by a factor of `1/cos(lat)`. At lat=60°: **2× overestimate**. At lat=80°: **5.7× overestimate**. This means g2m connections are wrong near poles (too many east-west edges), edge features (len, vdiff) encode false distances, mesh spacing is non-uniform even when intended uniform, and area weights (PR #258) partially compensate but don't fix the structural problem.
-
-**My Proposed Solution:** A `CoordinateSystem` abstraction that ALL graph operations use internally, making WMG coordinate-system-aware:
-
-```mermaid
-flowchart TB
-    %% Light Professional Styling: Dashed border for Abstract, crisp blues for new classes
-    classDef baseClass fill:#f8fafc,stroke:#475569,stroke-width:2px,stroke-dasharray: 5 5,rx:6px,color:#0f172a
-    classDef existingClass fill:#ffffff,stroke:#94a3b8,stroke-width:1px,rx:6px,color:#334155
-    classDef newClass fill:#f0f9ff,stroke:#0284c7,stroke-width:2px,rx:6px,color:#0f172a
-
-    CS["<b>CoordinateSystem (ABC)</b><br/>distance(A,B) · midpoint(A,B)<br/>area(polygon) · bearing(A,B)<br/>project(latlon)"]:::baseClass
-
-    P["<b>ProjectedCS</b><br/>(current default)<br/>d = L2 Euclidean"]:::existingClass
-    S["<b>SphericalCS (NEW)</b><br/>d = Haversine<br/>radius = 6371 km"]:::newClass
-    R["<b>RotatedPoleCS (NEW)</b><br/>For LAM grids<br/>d = Vincenty"]:::newClass
-
-    %% Architecture flow
-    CS --> P
-    CS --> S
-    S --> R
-```
-
-This change propagates through the entire pipeline:
-- `connect_nodes_across_graphs()` uses `cs.distance()` for KD-tree construction
-- Edge features use `cs.distance()` and `cs.bearing()` for `len`/`vdiff`
-- Poisson disk sampling uses `cs.distance()` for spacing enforcement
-- Convex hull uses `cs.area()` for coverage metrics
-- Quality metrics use `cs.distance()` for isotropy calculation
-
-```python
-# weather_model_graphs/coordinates.py (NEW)
-class SphericalCoordinateSystem(CoordinateSystem):
-    def __init__(self, radius_km=6371.0): self.radius = radius_km
-    def distance(self, a, b):  # Haversine on (lon,lat) in radians
-        dlon, dlat = b[...,0]-a[...,0], b[...,1]-a[...,1]
-        h = np.sin(dlat/2)**2 + np.cos(a[...,1])*np.cos(b[...,1])*np.sin(dlon/2)**2
-        return 2 * self.radius * np.arcsin(np.sqrt(h))
-    # ... [midpoint via slerp, bearing via atan2 omitted]
-```
-
-### 7A.2 Topology Benchmarking Suite (NOVEL)
-
-**The Problem:** There is NO systematic way to compare graph topologies for weather prediction. Users must train expensive models to know if triangular is better than rectangular for their data. I propose a **lightweight benchmarking suite** that estimates prediction quality WITHOUT training:
-
-| Metric | What it Measures | What it Predicts |
-|--------|-----------------|-----------------|
-| **IPD** (Information Propagation Diameter) | `max shortest path = nx.diameter(m2m)` | Min GNN layers for global coverage. Lower = better. |
-| **ERF** (Effective Receptive Field at K hops) | Fraction of nodes reachable in K steps | How much the model "sees" at given depth. Higher = better. |
-| **EER** (Edge Efficiency Ratio) | `ERF(K) / num_edges` | Coverage per edge = memory efficiency. Higher = better. |
-| **GCQ** (G2M Coupling Quality) | `1 - CV(grid-to-nearest-mesh distances)` | Even representation of grid nodes. Higher = better. |
-| **HCQ** (Hierarchical Coarsening Quality) | Product of level-wise quality | For hierarchical graphs only. Higher = better. |
-
-**Example benchmark output** (same domain, same node count):
-
-| Topology | IPD | ERF@4 | EER | GCQ | Rank |
-|----------|-----|-------|-----|-----|------|
-| Rectilinear 8-star | 18 | 0.45 | 0.056 | 0.92 | 3rd |
-| **Triangular Delaunay** | **14** | **0.58** | **0.097** | **0.94** | **1st ★** |
-| Hexagonal | 15 | 0.52 | 0.087 | 0.93 | 2nd |
-| Density-adaptive | 16 | 0.61 | 0.082 | 0.97 | 1st ★ |
-
-Key insight: Delaunay is **~40% more edge-efficient** than rectilinear (6 edges/node vs 8, with 1.3× ERF growth).
-
-```python
-# weather_model_graphs/benchmark.py (NEW)
-class TopologyBenchmark:
-    """Compare topologies WITHOUT training. Returns ranked DataFrame."""
-    def compare(self, topologies: dict) -> pd.DataFrame:
-        results = [{
-            "topology": name, "IPD": self._compute_ipd(g),
-            "ERF": self._compute_erf(g, self.k_hops),
-            "EER": self._compute_eer(g, self.k_hops), "GCQ": self._compute_gcq(g),
-        } for name, g in topologies.items()]
-        df = pd.DataFrame(results)
-        df["rank"] = df[["IPD","ERF","EER","GCQ"]].rank().mean(axis=1).rank()
-        return df.sort_values("rank")
-```
-
-### 7A.3 Stretched-Grid Architecture for Variable-Resolution LAM (NOVEL)
-
-**The Problem:** Limited Area Models (LAM) need high resolution in the forecast region but low resolution at boundaries. Current WMG only supports uniform mesh spacing. I propose a **stretched-grid** approach inspired by ECMWF's AIFS stretched-grid architecture (2024).
-
-**The Algorithm:**
-1. Define `focus_center` (lat, lon) and `focus_radius` for the high-resolution region
-2. Define `stretch_factor` (e.g., 4× means 4× denser at center than boundary)
-3. Compute radial spacing function: `spacing(r) = base * (1 + (factor-1) * sigmoid((r - radius) / width))`
-4. Apply variable-radius Poisson disk sampling with `spacing(r)` — dense at center, sparse at edges
-5. Delaunay triangulation for connectivity
-
-**Benefits:** Same total mesh nodes but 4× resolution where it matters. Smooth sigmoid transition avoids numerical artifacts at the boundary. Compatible with all `m2m_connectivity` types (flat, hierarchical). Exposed as `mesh_layout="stretched"` in `create_all_graph_components()`.
-
-```python
-# weather_model_graphs/create/mesh/stretched.py (NEW)
-def create_stretched_mesh(xy, base_mesh_distance, focus_center, focus_radius,
-                          stretch_factor=4.0, transition_width=None):
-    if transition_width is None: transition_width = focus_radius / 3.0
-    def spacing_fn(positions):
-        r = np.linalg.norm(positions - np.array(focus_center), axis=-1)
-        return base_mesh_distance / (1 + (stretch_factor-1) * _sigmoid(-(r-focus_radius)/transition_width))
-    return _build_delaunay_digraph(_variable_radius_poisson_disk(bounds, spacing_fn))
-```
-
-### 7A.4 Learned Mesh Coarsening for Hierarchical Graphs (NOVEL)
-
-**The Problem:** Current hierarchical graphs use simple stride-based coarsening (take every Nth node). This is topology-unaware and produces poor coarsening for non-rectangular meshes — mountains get the same resolution as flat ocean. I propose **physics-aware learned coarsening** inspired by M4GN (2025):
-
-**Method 1 — Weighted Farthest Point Sampling (wFPS):** Standard FPS selects the point farthest from all selected points. Weighted FPS modifies the distance: `d_eff = d_euclidean / weight`, where weight = local feature gradient magnitude. High-gradient regions (mountains, coastlines) get MORE coarse nodes. Low-gradient regions (ocean, plains) get FEWER.
-
-**Method 2 — Spectral Clustering Coarsening:** Use the Fiedler vector (2nd eigenvector of the graph Laplacian) to partition the mesh into balanced clusters. Each cluster becomes one coarse node at the cluster centroid. This preserves the spectral gap of the original mesh, which is critical for message-passing efficiency.
-
-**Method 3 — Topography-Aware Coarsening:** Use elevation variance within Voronoi cells as the coarsening weight. High variance (mountainous terrain) → preserve fine resolution. Low variance (flat terrain) → aggressively coarsen.
-
-```python
-# weather_model_graphs/create/mesh/coarsening.py (NEW)
-def weighted_farthest_point_sampling(positions, weights, n_coarse, seed=42):
-    """wFPS: d_eff = d_euclidean / weight → high-weight regions get more coarse nodes."""
-    selected, distances = [np.random.RandomState(seed).randint(0, len(positions))], np.full(len(positions), np.inf)
-    for _ in range(n_coarse - 1):
-        d = np.linalg.norm(positions - positions[selected[-1]], axis=-1) / np.clip(weights, 0.1, None)
-        distances = np.minimum(distances, d)
-        selected.append(np.argmax(distances))
-    return np.array(selected)
-```
-
-### 7A.5 Dynamic Edge Construction: Weather-State-Aware Graphs (NOVEL)
-
-**The Problem:** All current graph construction is STATIC — the mesh topology is fixed before training and never changes. But weather patterns are dynamic: a cyclone moves, fronts shift, jet streams meander. The same topology is used whether predicting calm weather or a Category 5 hurricane.
-
-**My Proposed Solution:** A `DynamicEdgeAttention` layer that adapts graph connectivity based on the current atmospheric state. WMG builds the SUPERSET of possible edges (dense connectivity). The dynamic layer SELECTS which edges to use per timestep via learned attention scores.
-
-```mermaid
-flowchart TD
-    %% Classic Professional Styling
-    classDef inputData fill:#ffffff,stroke:#94a3b8,stroke-width:2px,rx:6px,color:#334155
-    classDef newProcess fill:#f0f9ff,stroke:#0284c7,stroke-width:2px,rx:6px,color:#0f172a
-    classDef finalModel fill:#f8fafc,stroke:#475569,stroke-width:2px,rx:6px,color:#0f172a
-
-    BG["<b>Static Base Graph (from WMG)</b><br/>All possible edges<br/>mesh_layout determines node positions"]:::inputData
-    WS["<b>Current Atmospheric State</b><br/>(temperature, pressure, wind at each node)"]:::inputData
-    
-    DEA["<b>DynamicEdgeAttention (NEW)</b><br/>Computes a_ij = f(h_i, h_j) per edge<br/>Prunes edges where a_ij below threshold<br/>Weights remaining edges by attention"]:::newProcess
-    
-    GNN["<b>GNN Processing (GraphLAM/HiLAM)</b><br/>Message passing on adapted graph<br/>Different effective topology per timestep"]:::finalModel
-
-    %% Architecture flow
-    BG --> DEA
-    WS --> DEA
-    DEA --> GNN
-```
-
-**Key insight:** This is fully compatible with WMG's static construction. WMG provides the candidate edge set; the dynamic layer selects from it at runtime. Research basis: RTEC (2024, Real-Time Edge Construction), TAEGCN (2024, Temporal Attention Evolutional Graph ConvNet), Dynamic GNNs (2024, learned adjacency matrices).
-
-```python
-# neural_lam/models/dynamic_edges.py (NEW)
-class DynamicEdgeAttention(nn.Module):
-    def forward(self, node_features, base_edge_index, base_edge_attr):
-        src = node_features[base_edge_index[0]]
-        dst = node_features[base_edge_index[1]]
-        scores = self.edge_predictor(torch.cat([src, dst], dim=-1)).squeeze(-1)
-        mask = scores > self.threshold  # prune low-attention edges
-        return base_edge_index[:, mask], base_edge_attr[mask] * scores[mask].unsqueeze(-1)
-```
-
-### 7A.6 Graph Visualization & Analysis Dashboard (NOVEL)
-
-**The Problem:** Understanding WHY one mesh topology works better than another requires extensive visualization. Current WMG has basic `plot_2d.py` but no interactive analysis. I propose a comprehensive `GraphAnalysisPlot` module providing:
-
-1. **Side-by-side topology comparison** — two meshes with quality metric overlays (IPD, ERF, EER, GCQ)
-2. **Receptive field heatmap** — K-hop neighborhood visualization from any selected node
-3. **Edge length distribution** — histogram showing uniformity (bimodal = rectilinear, unimodal = Delaunay)
-4. **Spectral analysis** — Laplacian eigenvalue spectrum with spectral gap highlighted
-5. **G2M connection density map** — spatial heatmap showing where grid-mesh coupling is dense vs sparse
-
-```python
-# weather_model_graphs/visualise/analysis.py (NEW)
-class GraphAnalysisPlot:
-    def plot_topology_comparison(self, other_graph, names=("A", "B")):
-        """Side-by-side mesh topology with quality metrics overlay."""
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 8))
-        # ... [plots mesh nodes, edges, and quality annotations]
-    def plot_receptive_field(self, node_id, k_hops=4): ...
-    def plot_edge_length_distribution(self, bins=50): ...
-    def plot_spectral_analysis(self, n_eigenvalues=50): ...
-    def full_report(self, save_path=None): ...  # all 5 plots in one figure
-```
+* **Spherical-Aware Graph Construction:** WMG currently leverages Euclidean distances, systematically distorting calculations at global scales (e.g., 2× distortion at lat=60°). A native `CoordinateSystem` abstraction (Haversine/Vincenty formulas) will correct Kd-tree generation and edge features.
+* **Learned Mesh Coarsening for Hierarchical Graphs:** Replacing rigid N-stride node selection with **Weighted Farthest Point Sampling (wFPS)**. High-gradient geographic regions (mountains, coastlines) selectively retain resolution compared to flat terrain.
+* **Weather-State-Aware Dynamic Graphs:** Implementing a `DynamicEdgeAttention` mechanism within Neural-LAM. WMG builds a superset of possible structural edges; Neural-LAM learns to dynamically thin/weight them via attention based on the *active* atmospheric state (e.g., routing density dynamically around a moving cyclone).
+* **Graph Visualization & Analysis Dashboard:** Extending `plot_2d.py` into a fully analytic module (`GraphAnalysisPlot`) mapping Receptive Fields, Laplacian Eigenvalue Spectrum, and G2M connection densities.
+* **Self-Describing `xr.DataTree` Output Format:** Replacing the loosely associated `.pt` dicts with a unified `graph.zarr/` tree, appending complete generation metadata and quality metrics for straightforward scientific reproduction.
 
 <div style="page-break-after: always;"></div>
 
