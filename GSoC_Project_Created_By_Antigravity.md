@@ -1,8 +1,6 @@
-<div>
-  <img src="gsoc_logo.svg" alt="Google Summer of Code" height="70" align="left" />
-  <img src="mllam_logo.png" alt="MLLAM" height="70" align="right" />
+<div align="center">
+  <img src="gsoc_logo.svg" alt="Google Summer of Code" height="80" />
 </div>
-<br clear="all" />
 <br />
 
 <div align="center">
@@ -14,13 +12,17 @@
 
 <br />
 
+<div align="center">
+
 | | |
 | :--- | :--- |
-| **Organization:** <img src="mllam_logo.png" width="18"/> **MLLAM** | **Project Length:** 350 hours (Large) |
+| **Organization:** <img src="mllam_logo.png" width="18" align="center"/> **MLLAM** | **Project Length:** 350 hours (Large) |
 | **Project Idea:** [Flexible Graph Construction (#1)](https://github.com/mllam/neural-lam/wiki/GSoC-ideas#1-flexible-graph-construction) | **Difficulty:** Medium |
 | **Repositories:** [weather-model-graphs](https://github.com/mllam/weather-model-graphs), [neural-lam](https://github.com/mllam/neural-lam) | **Mentors:** Hauke Schulz, Leif Denby, Joel Oskarsson |
 | **Applicant:** Prajwal Hawaldar | **GitHub:** [@prajwal-tech07](https://github.com/prajwal-tech07) |
 | **Timezone:** UTC+5:30 (IST) | **Commitment:** 30–35 hrs/week |
+
+</div>
 
 ---
 
