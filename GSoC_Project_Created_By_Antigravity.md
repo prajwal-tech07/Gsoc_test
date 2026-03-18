@@ -828,149 +828,46 @@ class GraphAnalysisPlot:
 
 <div style="page-break-after: always;"></div>
 
-## 8. Weekly Timeline
+## 8. Development Timeline & Core Deliverables
 
-> **Pacing note:** Layers 1–3 are **core deliverables** (Weeks 1–6, guaranteed). Layers 4–5 are **modular stretch goals** (Weeks 7–11, each independent). Week 12 is documentation.
+This roadmap distills execution into 5 structured phases over 12 weeks, ensuring **Layers 1–3** (the "Core Deliverables") are solidly completed by Midterm, while safely sandboxing **Layers 4 & 5** (the modular "Alpha/Stretch Research Goals") for the latter half.
 
-### Community Bonding (May 8 – June 1)
+> **Note on Process:** All architecture will undergo rigorous Test-Driven Development (E2E Integration, Property Invariants, Backwards-Compatibility Regression).
 
-| # | Task | Deliverable | Layer |
-|---|------|-------------|-------|
-| B.1 | Finalize PR #81 review with leifdenby | PR merged or approved | 1 |
-| B.2 | Address PR #258 feedback from joeloskarsson | PR merged or approved | 1 |
-| B.3 | Study Joel's prototype branches + leifdenby's weatherduck | Integration notes | — |
-| B.4 | POC notebook: quality metrics on existing graphs | Working demo | 4 |
-| B.5 | Set up CI/CD locally for both repos | Full test suites pass | — |
+### ☀️ Community Bonding (May 8 – June 1)
+| Focus Area | Output Artifacts |
+| :------- | :------- |
+| **Design Prep** | • Merge/Address [PR #81](https://github.com/mllam/weather-model-graphs/pull/81) & [PR #258](https://github.com/mllam/neural-lam/pull/258).<br>• Prototype notebook for PyG `HeteroData` translation. |
 
-### Phase 1: Core — Foundation (Weeks 1–3, Layer 1)
+### 🚀 Phase 1: Core Foundation (Weeks 1–3 / Layer 1 & 2)
+| Focus Area | Output Artifacts |
+| :------- | :------- |
+| **WMG Stabilizers** | • **D1:** Convex hull auto-cropping for non-rectangular data ([#40](https://github.com/mllam/weather-model-graphs/issues/40)).<br>• **D2:** G2M isolation assertion/fixes ([#42](https://github.com/mllam/weather-model-graphs/issues/42)).<br>• **D3:** Enforce hierarchical edge integrity (`from_level`/`to_level`) ([#45](https://github.com/mllam/weather-model-graphs/issues/45)).<br>• **D4:** GraphFormatValidator schema integration ([#384](https://github.com/mllam/neural-lam/issues/384)). |
 
-| Week | Deliverables | Acceptance Criteria |
-|------|-------------|---------------------|
-| **1** | `crop_mesh_to_convex_hull()` via `scipy.spatial.ConvexHull` | Mesh nodes outside hull removed; tests for rect, L-shaped, with/without margin |
-| **2** | Degree-0 detection + auto-fix (#42). `from_level`/`to_level` attrs (#45) | Disconnected nodes auto-fixed; PyG `from_networkx()` compat |
-| **3** | Finalize PR #92 (triangular) + PR #91 (prebuilt). Integration tests | All `layout × connectivity` combos pass; backward-compat tests green |
+### 🌉 Phase 2: Building the Bridge (Weeks 4–6 / Layer 2 & 3)
+| Focus Area | Output Artifacts |
+| :------- | :------- |
+| **The PyG Bridge** | • **D5:** Neural-LAM: Build native `build_graph.py` pipeline (retiring obsolete `create_graph.py`).<br>• **D6:** Neural-LAM: PyG `HeteroData` unified structure for non-rectangular data ingestion natively ([#385](https://github.com/mllam/neural-lam/issues/385)). |
 
-### Phase 2: Core — Bridge (Weeks 4–5, Layer 2)
+> **<<< Midterm Evaluation Checkpoint >>>**<br>
+> *Success Criterion: Irregular, non-rectangular topological data successfully routes End-to-End through WMG → Neural-LAM → forward model pass.*
 
-| Week | Deliverables | Acceptance Criteria |
-|------|-------------|---------------------|
-| **4** | `validate_graph_components()` + `GraphFormatValidator` + `build_graph.py` | Valid/invalid graph tests; CLI entry points; deprecation wrapper |
-| **5** | Reindexing in `load_graph()`, feature rescaling, E2E test, HeteroData Step A | Irregular → WMG → .pt → load_graph() → model forward pass ✅ |
+### 🔬 Phase 3: Advanced Architectures (Weeks 7–9 / Layer 4 Stretch Work)
+| Focus Area | Output Artifacts |
+| :------- | :------- |
+| **Custom Mesh Types**| • **D7:** Implementation of Delaunay Triangular (PR #92), Pre-built (PR #91), and Hexagonal grid routing.<br>• **D8:** Quality metrics calculation suite (Coverage, Isotropy, G2M Balance, Spectral Gap).<br>• **D9:** Density-adaptive mapping & Multi-source blending functionality. |
 
-> **<< MIDTERM EVALUATION >>** — Layers 1 & 2 complete, Layer 3 underway.
+### 🔭 Phase 4: SOTA Implementation (Weeks 10–11 / Layer 5 Stretch Work)
+| Focus Area | Output Artifacts |
+| :------- | :------- |
+| **Research SOTA** | • **D10:** WMG Spherical Haversine implementation for accurate global projections.<br>• **D11:** Neural-LAM: `DynamicEdgeAttention` mechanism for storm-system responsive graphing.<br>• **D12:** Topology analytical plotting toolkit (A/B testing ERF vs Coarsening efficiencies). |
 
-### Phase 3: Core Layer 3 + Stretch Goals (Weeks 6–11)
+### 📑 Phase 5: Final Polish (Week 12)
+| Focus Area | Output Artifacts |
+| :------- | :------- |
+| **Handover** | • **D13:** Comprehensive Tutorial Jupyter Notebooks for E2E integration.<br>• **D14:** Full docstring verification and final branch rebasing.<br>• **D15:** Submission compilation. |
 
-| Week | Layer | Module | Key Deliverable |
-|------|-------|--------|----------------|
-| **6** | **3 (core)** | HeteroData | Complete adapter + `BaseGraphModel` refactor + native loading. **All core done.** |
-| **7** | 4 (stretch) | Quality + CoordSystem | `GraphQualityReport` + `SphericalCoordinateSystem` |
-| **8** | 5 (stretch) | Benchmarking + Stretched | `TopologyBenchmark` (IPD/ERF/EER) + `create_stretched_mesh()` |
-| **9** | 4+5 (stretch) | Adaptive + Coarsening | `create_density_adaptive_mesh()` + `weighted_farthest_point_sampling()` + AMR |
-| **10** | 4+5 (stretch) | Dynamic + DataTree | `DynamicEdgeAttention` + `to_datatree()` |
-| **11** | 4+5 (stretch) | Visualization + Fusion | `GraphAnalysisPlot` + multi-source g2m construction |
-
-### Phase 4: Documentation + Polish (Week 12)
-
-Tutorials ("Graphs for Irregular Data", "E2E with HeteroData", "Topology Benchmarking") · API docs · CHANGELOGs · 100+ tests · Final PR cleanup · **Final submission.**
-
-> **<< FINAL EVALUATION >>**
-
----
-
-## 9. Testing Strategy
-
-### 9.1 Testing Pyramid
-
-| Level | Count | What it Tests |
-|-------|-------|---------------|
-| **End-to-End** | 5 | Irregular datastore → WMG → .pt → load_graph() → model forward pass |
-| **Integration** | 15 | Every `archetype × layout × connectivity × save × load` combo |
-| **Unit** | 40+ | Delaunay, FPS, hull crop, quality metrics, AMR, DataTree, benchmark |
-| **Property-Based** | 10 | Graph invariants: connected, bidirectional, correct attrs, feature consistency |
-| **Backward Compat** | 10 | Every archetype with defaults = identical output to before changes |
-
-### 9.2 Key Test Cases
-
-```python
-@pytest.mark.parametrize("mesh_layout", ["rectilinear", "triangular", "prebuilt"])
-@pytest.mark.parametrize("m2m_connectivity", ["flat", "flat_multiscale", "hierarchical"])
-def test_full_matrix(mesh_layout, m2m_connectivity):
-    """Every layout × connectivity combination produces valid graph."""
-
-def test_heterodata_roundtrip():
-    """Dict → HeteroData → model forward pass matches dict → model."""
-# ... [quality_metrics, amr_reduces_error, datatree_metadata, format_validator omitted]
-```
-
----
-
-## 10. Deliverables (30 total)
-
-| # | Deliverable | Repo | Layer |
-|---|-------------|------|-------|
-| **D1** | Convex hull cropping | WMG | 1 |
-| **D2** | G2M node assertion + auto-fix | WMG | 1 |
-| **D3** | Level attribute consistency | WMG | 1 |
-| **D4** | Triangular mesh layout (Delaunay) | WMG | 1 |
-| **D5** | Prebuilt mesh pathway | WMG | 1 |
-| **D6** | `validate_graph_components()` | WMG | 2 |
-| **D7** | Node-ID-to-tensor-index mapping | WMG | 2 |
-| **D8** | `GraphFormatValidator` (shared) | Both | 2 |
-| **D9** | `build_graph.py` (replaces create_graph) | neural-lam | 2 |
-| **D10** | Enhanced `load_graph()` + reindex/rescale | neural-lam | 2 |
-| **D11** | `graph_dict_to_heterodata()` adapter | neural-lam | 3 |
-| **D12** | `BaseGraphModel` HeteroData refactor | neural-lam | 3 |
-| **D13** | `load_graph_hetero()` native loading | neural-lam | 3 |
-| **D14** | Graph Quality Metrics framework | WMG ★ | 4 |
-| **D15** | Density-adaptive mesh generator | WMG ★ | 4 |
-| **D16** | Adaptive Mesh Refinement (AMR) | WMG ★ | 4 |
-| **D17** | `xr.DataTree` output format | WMG ★ | 4 |
-| **D18** | Multi-source data fusion | Both ★ | 4 |
-| **D19** | `CoordinateSystem` abstraction (spherical) | WMG ★ | 5 |
-| **D20** | Topology Benchmarking Suite (IPD/ERF/EER) | WMG ★ | 5 |
-| **D21** | Stretched-grid mesh for LAM | WMG ★ | 5 |
-| **D22** | Learned coarsening (wFPS/spectral) | WMG ★ | 5 |
-| **D23** | `DynamicEdgeAttention` | neural-lam ★ | 5 |
-| **D24** | Graph analysis visualization dashboard | WMG ★ | 5 |
-| **D25–27** | 3 Tutorials | Both | Docs |
-| **D28** | API docs + READMEs + CHANGELOGs | Both | Docs |
-| **D29** | Performance benchmarks | Both | Docs |
-| **D30** | 100+ tests across both repos | Both | All |
-
-> ★ = NEW file · Layers 1–3 = core · Layers 4–5 = stretch goals
-
-### File Structure
-
-```
-weather-model-graphs/src/weather_model_graphs/
-├── create/
-│   ├── archetype.py                    # MODIFIED
-│   ├── base.py                         # MODIFIED
-│   └── mesh/
-│       ├── coords.py                   # MODIFIED (PR #81)
-│       ├── density_adaptive.py         # ★ NEW (L4)
-│       ├── stretched.py                # ★ NEW (L5)
-│       ├── cropping.py                 # ★ NEW (#40)
-│       ├── coarsening.py               # ★ NEW (L5)
-│       └── kinds/{flat,hierarchical}.py # MODIFIED
-├── coordinates.py                      # ★ NEW (L5)
-├── quality.py                          # ★ NEW (L4)
-├── benchmark.py                        # ★ NEW (L5)
-├── refine.py                           # ★ NEW (L4)
-├── save.py · save_datatree.py          # MODIFIED · ★ NEW (L4)
-├── format_validator.py                 # ★ NEW (L2)
-└── visualise/analysis.py              # ★ NEW (L5)
-
-neural-lam/neural_lam/
-├── build_graph.py                      # ★ NEW (L2)
-├── graph_utils.py                      # ★ NEW (L3)
-├── utils.py                            # MODIFIED
-├── models/
-│   ├── {base_graph_model,graph_lam,hi_lam,hi_lam_parallel}.py  # MODIFIED (L3)
-│   └── dynamic_edges.py               # ★ NEW (L5)
-└── interaction_net.py                  # MODIFIED
-```
+> **<<< Final Evaluation Checkpoint >>>**
 
 ---
 
