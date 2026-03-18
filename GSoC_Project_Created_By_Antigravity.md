@@ -43,18 +43,18 @@
 
 ## 1. About Me
 
+I am a Computer Science undergraduate with a strong foundation in machine learning, algorithmic thinking, and data-driven system design, supported by relevant coursework and applied projects. I have experience building and optimizing end-to-end ML pipelines for real-world problem solving. This project aligns with my interest in developing scalable, research-oriented solutions while contributing effectively to open-source systems.
+
 | Field | Details |
 |-------|---------|
-| **Name** | Prajwal [Your Last Name] |
-| **GitHub** | [prajwal-tech07](https://github.com/prajwal-tech07) |
-| **University** | [Your University] |
-| **Degree / Year** | [e.g., B.Tech Computer Science, 3rd year] |
-| **Expected Graduation** | [e.g., May 2027] |
-| **Email** | [your.email@example.com] |
+| **Name** | Prajwal Hawaldar |
+| **GitHub** | [@prajwal-tech07](https://github.com/prajwal-tech07) |
+| **University** | Reva University |
+| **Degree / Year** | B.Tech Computer Science, 3rd year |
+| **Expected Graduation** | May 2027 |
+| **Email** | prajwalhawaldar2@gmail.com |
 | **Timezone** | UTC+5:30 (IST) |
-| **Available hours/week** | 30–35 hours |
-
-[Write 2–3 paragraphs about your academic background, relevant coursework (graph theory, ML, numerical methods, atmospheric science), programming experience, and why this project excites you.]
+| **Available hours/week** | 35–40 hours |
 
 **Key technical skills directly relevant to this project:**
 - **Graph neural networks:** PyTorch Geometric, custom `MessagePassing` layers, `HeteroData` objects
