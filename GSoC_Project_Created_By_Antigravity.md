@@ -1,29 +1,23 @@
 <div align="center">
 
-<img src="gsoc_mllam_header.png" alt="GSoC 2026 × MLLAM" width="700"/>
-
----
-
-# Flexible Graph Construction
-
-### *A Unified Pipeline for Universal Graph Topologies in Neural Weather Prediction*
-
-**Google Summer of Code 2026 Proposal**
+<img src="gsoc_logo.svg" alt="Google Summer of Code" height="45"/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<img src="https://avatars.githubusercontent.com/u/172544458?s=200&v=4" alt="MLLAM" height="50"/>
 
 </div>
-
-<br/>
 
 <div align="center">
 
-| | |
-| :--- | :--- |
-| **Organization:** MLLAM | **Project Length:** 350 hours (Large) |
-| **Project:** [Flexible Graph Construction](https://github.com/mllam/neural-lam/wiki/GSoC-ideas#1-flexible-graph-construction) (Idea #1) | **Difficulty:** Medium |
-| **Repositories:** [weather-model-graphs](https://github.com/mllam/weather-model-graphs), [neural-lam](https://github.com/mllam/neural-lam) | **Mentors:** Hauke Schulz, Leif Denby, Joel Oskarsson |
-| **Applicant:** Prajwal [Your Last Name] | **GitHub:** [prajwal-tech07](https://github.com/prajwal-tech07) |
+### **Flexible Graph Construction: A Unified Pipeline for Universal Graph Topologies in Neural Weather Prediction**
+
+*GSoC 2026 · MLLAM · Idea #1 · 350 hours (Large) · Medium Difficulty*
 
 </div>
+
+| | |
+| :--- | :--- |
+| **Repositories:** [weather-model-graphs](https://github.com/mllam/weather-model-graphs) (WMG), [neural-lam](https://github.com/mllam/neural-lam) | **Mentors:** Hauke Schulz, Leif Denby, Joel Oskarsson |
+| **Applicant:** Prajwal [Your Last Name] · [prajwal-tech07](https://github.com/prajwal-tech07) | **Timezone:** UTC+5:30 · 30–35 hrs/week |
 
 ---
 
@@ -68,11 +62,11 @@
 
 ## 2. Community Engagement
 
-I have been actively contributing to both repositories with **substantive architectural PRs** — not cosmetic fixes. My engagement goes beyond code: through deep analysis and community discussions, I identified the fundamental gap between WMG and neural-lam and proposed the architectural solution that became the centerpiece of this proposal.
+I have been actively contributing to both repositories with **substantive architectural PRs**, not cosmetic fixes — and through community discussions I shaped the core architectural direction that this proposal now implements.
 
 ### 2.1 The Architectural Pillars: Issues #384 & #385
 
-Through active participation in the bridging discussion ([#339](https://github.com/mllam/neural-lam/issues/339)), I conceptualized the core architectural direction that this proposal implements. These ideas were subsequently formalized as two strategic issues that now serve as the **twin pillars** of this GSoC project:
+Through active participation in the bridging discussion ([#339](https://github.com/mllam/neural-lam/issues/339)), I conceptualized the core idea of unifying WMG and neural-lam via `HeteroData`. These ideas were formalized as two strategic issues — the **twin pillars** of this GSoC project:
 
 ```mermaid
 mindmap
@@ -85,31 +79,29 @@ mindmap
     **Pillar 2 — Issue #385**
       pyg.HeteroData migration
       Typed graph representation
-      Single .to‹device› transfer
+      Single .to device transfer
       Extensible multi-source support
-    Foundation ‹My PRs›
-      PR #81 — mesh_layout architecture
-      PR #91 — prebuilt mesh pathway
-      PR #92 — triangular Delaunay mesh
-      PR #258 — area weights for metrics
+    Foundation PRs
+      PR #81 mesh_layout architecture
+      PR #91 prebuilt mesh pathway
+      PR #92 triangular Delaunay mesh
+      PR #258 area weights for metrics
 ```
 
-> **Why these matter:** Issues [#384](https://github.com/mllam/neural-lam/issues/384) and [#385](https://github.com/mllam/neural-lam/issues/385) together define the path from the current fragmented, rectangular-only graph pipeline to a unified, topology-agnostic architecture. Every other contribution in this proposal — from density-adaptive meshes to dynamic edge attention — builds on the foundation these pillars establish.
+> **Why these matter:** Issues [#384](https://github.com/mllam/neural-lam/issues/384) and [#385](https://github.com/mllam/neural-lam/issues/385) together define the path from the current fragmented, rectangular-only pipeline to a unified, topology-agnostic architecture. Every other contribution in this proposal builds on these pillars.
 
 ### 2.2 Code Contributions
 
 | PR / Issue | Repo | Title | Status | Impact |
 |------------|------|-------|--------|--------|
-| [**PR #81**](https://github.com/mllam/weather-model-graphs/pull/81) | WMG | `mesh_layout` two-step architecture | **Under review** *("95% done, well done!")* | **Core refactor** — decouples layout & connectivity |
+| [**PR #81**](https://github.com/mllam/weather-model-graphs/pull/81) | WMG | `mesh_layout` two-step architecture | **Under review** *(“95% done, well done!”)* | **Core refactor** — decouples layout & connectivity |
 | [**PR #258**](https://github.com/mllam/neural-lam/pull/258) | neural-lam | Area weights for metric computation | **Under review** | `cos(lat)` weighting through all 6 metrics |
 | [PR #91](https://github.com/mllam/weather-model-graphs/pull/91) | WMG | `mesh_layout='prebuilt'` support | Open | Enables arbitrary mesh injection |
 | [PR #92](https://github.com/mllam/weather-model-graphs/pull/92) | WMG | `mesh_layout='triangular'` (Delaunay) | Open | Enables non-rectangular meshes |
 | [Issue #97](https://github.com/mllam/weather-model-graphs/issues/97) | WMG | `validate_graph_components()` | Open | Pre-export structural validation |
 | [Issue #98](https://github.com/mllam/weather-model-graphs/issues/98) | WMG | Node-ID-to-tensor-index mapping | Open | Lossless WMG ↔ neural-lam round-trips |
 
-### 2.3 Depth of Understanding
-
-These contributions required studying **every source file** across both repositories — `create/base.py`, `coords.py`, `flat.py`, `hierarchical.py`, `save.py`, `networkx_utils.py` in WMG; `create_graph.py` (614 lines), `base_graph_model.py`, `graph_lam.py`, `hi_lam.py`, `hi_lam_parallel.py`, `utils.py`, `metrics.py`, `interaction_net.py` in neural-lam — giving me a comprehensive understanding of every integration point this project touches.
+These contributions required studying **every source file** across both repositories, giving me a comprehensive understanding of every integration point this project touches.
 
 <div style="page-break-after: always;"></div>
 
@@ -662,14 +654,14 @@ These modules represent cutting-edge research targets to be explored upon succes
 
 ```mermaid
 flowchart TB
-    classDef core fill:#eff6ff,stroke:#3b82f6,stroke-width:2px,rx:10px,color:#1e3a8a,font-weight:bold
-    classDef graph fill:#f0fdf4,stroke:#16a34a,stroke-width:2px,rx:10px,color:#14532d
+    classDef core fill:#eff6ff,stroke:#3b82f6,stroke-width:2px,rx:10px,color:#1e3a8a
+    classDef graphC fill:#f0fdf4,stroke:#16a34a,stroke-width:2px,rx:10px,color:#14532d
     classDef ml fill:#faf5ff,stroke:#9333ea,stroke-width:2px,rx:10px,color:#581c87
     classDef io fill:#fff7ed,stroke:#ea580c,stroke-width:2px,rx:10px,color:#9a3412
 
     HUB["Layer 5<br/>SOTA Innovations"]:::core
 
-    SC["🌐 Spherical-Aware<br/>Construction<br/>Haversine · Vincenty"]:::graph
+    SC["🌐 Spherical-Aware<br/>Construction<br/>Haversine · Vincenty"]:::graphC
     LC["🔬 Learned Mesh<br/>Coarsening<br/>Weighted FPS · Spectral"]:::ml
     DE["⚡ Dynamic Edge<br/>Attention<br/>Weather-State-Aware"]:::ml
     VZ["📊 Analysis<br/>Dashboard<br/>ERF · Spectrum · G2M"]:::io
