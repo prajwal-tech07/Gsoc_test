@@ -55,13 +55,16 @@
 
 I have been actively contributing to both repositories with **substantive architectural PRs** — not cosmetic fixes:
 
+> 💡 **STRATEGIC VISION & CORE INSIGHT: Bridging the Gap via `HeteroData`**
+> Through deep engagement with the codebase and active community discussions, I conceptualized and proposed the architectural idea of **"Bridging the Gap"** between WMG and Neural-LAM by migrating to PyTorch Geometric's **`HeteroData`** structure. This shift—from fragmented multi-tensor storage to a unified, heterogeneous graph foundation—streamlines the graph construction pipeline and serves as the *driving centerpiece* of this GSoC proposal.
+
 ### 2.1 weather-model-graphs Contributions
 
-| PR / Issue | Title | Status | Impact |
-|------------|-------|--------|--------|
-| [**PR #81**](https://github.com/mllam/weather-model-graphs/pull/81) | `mesh_layout` two-step architecture | **Under review** *(leifdenby: "95% done, well done! 🌟")* | **Core refactor** — decouples mesh layout from connectivity |
-| [PR #91](https://github.com/mllam/weather-model-graphs/pull/91) | `mesh_layout='prebuilt'` support | Open | Enables arbitrary mesh injection (ICON, MPAS) |
-| [PR #92](https://github.com/mllam/weather-model-graphs/pull/92) | `mesh_layout='triangular'` (Delaunay) | Open | Enables non-rectangular meshes |
+| PR / Issue | Title | Status | Impact & Milestone |
+|------------|-------|--------|---------------------|
+| [**PR #81**](https://github.com/mllam/weather-model-graphs/pull/81) | `mesh_layout` two-step architecture | **Under review** *(leifdenby: "95% done, well done! 🌟")* | **Core refactor** — decouples layout & connectivity 🚀 **(Target: v0.4)** |
+| [PR #91](https://github.com/mllam/weather-model-graphs/pull/91) | `mesh_layout='prebuilt'` support | Open | Enables arbitrary mesh injection 🚀 **(Target: v0.5)** |
+| [PR #92](https://github.com/mllam/weather-model-graphs/pull/92) | `mesh_layout='triangular'` (Delaunay) | Open | Enables non-rectangular meshes 🚀 **(Target: v0.5)** |
 | [Issue #97](https://github.com/mllam/weather-model-graphs/issues/97) | `validate_graph_components()` | Open | Pre-export structural validation |
 | [Issue #98](https://github.com/mllam/weather-model-graphs/issues/98) | Node-ID-to-tensor-index mapping | Open | Lossless WMG ↔ neural-lam round-trips |
 
