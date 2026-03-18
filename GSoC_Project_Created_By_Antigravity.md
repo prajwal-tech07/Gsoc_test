@@ -237,23 +237,31 @@ Any `mesh_layout` can combine with any `m2m_connectivity` — creating a **combi
 
 ```mermaid
 flowchart TD
-    classDef default fill:#f8f9fa,stroke:#d1d5db,stroke-width:2px,rx:8px,color:#1f2937
-    classDef highlight fill:#e1f5fe,stroke:#0288d1,stroke-width:2px,rx:8px,color:#0f172a
-    classDef danger fill:#fef2f2,stroke:#ef4444,stroke-width:2px,rx:8px,color:#991b1b
+    %% Professional Class Definitions
+    classDef default fill:#ffffff,stroke:#64748b,stroke-width:1.5px,rx:4px,color:#334155
+    classDef highlight fill:#f0f9ff,stroke:#0284c7,stroke-width:1.5px,rx:4px,color:#0c4a6e
+    classDef danger fill:#fff1f2,stroke:#e11d48,stroke-width:2px,rx:4px,color:#9f1239
 
+    %% Source of Truth Subgraph
     subgraph WMG["weather-model-graphs (source of truth)"]
-        W1["create/base.py\ncreate_all_graph_components()"]
-        W2["save.py → to_pyg()\nExports .pt files"]
+        W1["create/base.py<br/>create_all_graph_components()"]
+        W2["save.py → to_pyg()<br/>Exports .pt files"]
     end
 
+    %% Duplicated Code Subgraph
     subgraph NL["neural-lam (DUPLICATED CODE)"]
-        N1["create_graph.py — 614 lines\nReimplements WMG logic\nHardcodes nx.grid_2d_graph"]:::danger
-        N2["utils.py → load_graph()\n11 fragile string keys"]
+        N1["create_graph.py — 614 lines<br/>Reimplements WMG logic<br/>Hardcodes nx.grid_2d_graph"]:::danger
+        N2["utils.py → load_graph()<br/>11 fragile string keys"]
     end
 
-    W1 -.->|"should be single\nsource of truth"| N1
+    %% Routing / Edges
+    W1 -.->|"should be single<br/>source of truth"| N1
     W2 -->|".pt files on disk"| N2
-    N1 -->|"❌ NotImplementedError\nfor irregular data"| X["BLOCKED"]:::danger
+    N1 -->|"❌ NotImplementedError<br/>for irregular data"| X["BLOCKED"]:::danger
+
+    %% Subgraph Visual Styling (Clean, dashed borders)
+    style WMG fill:#f8fafc,stroke:#cbd5e1,stroke-width:2px,stroke-dasharray: 5 5,color:#1e293b
+    style NL fill:#fcf0f0,stroke:#fecdd3,stroke-width:2px,stroke-dasharray: 5 5,color:#9f1239
 ```
 
 The **core blocking line** in neural-lam:
@@ -265,7 +273,7 @@ grid_graph = networkx.grid_2d_graph(xy.shape[1], xy.shape[2])  # ← RECTANGULAR
 
 ### 4.5 A Key Opportunity for Enhancement: Quality Guarantees
 
-Once flexible meshes are enabled, a natural next step is providing a mechanism to evaluate whether a generated mesh is well-suited for message-passing. Currently, users have no quantitative guidance on questions like:
+Once flexible meshes are enabled, a natural next step is providing a mechanism to evaluate whether a generated mesh is well-suited for message-passing. Currently, users hve no qauantitative guidance on questions like:
 
 - Does the mesh have uniform edge-length distribution? (isotropy)
 - Does the mesh cover the data domain without gaps? (coverage)
@@ -281,21 +289,40 @@ This is a natural extension of the flexible graph construction work — as a str
 ### 5.1 Current End-to-End Data Flow
 
 ```mermaid
-flowchart LR
-    classDef default fill:#f8f9fa,stroke:#d1d5db,stroke-width:2px,rx:8px,color:#1f2937
-    classDef highlight fill:#e1f5fe,stroke:#0288d1,stroke-width:2px,rx:8px,color:#0f172a
-    classDef danger fill:#fef2f2,stroke:#ef4444,stroke-width:2px,rx:8px,color:#991b1b
+flowchart TD
+    %% Professional Class Styling
+    classDef default fill:#f8fafc,stroke:#94a3b8,stroke-width:2px,color:#0f172a,rx:8px
+    classDef danger fill:#fef2f2,stroke:#ef4444,stroke-width:2px,color:#991b1b,rx:8px
+    classDef highlight fill:#f0fdf4,stroke:#22c55e,stroke-width:2px,color:#14532d,rx:8px
 
-    DS["DataStore\n(BaseRegularGridDatastore)\nget_xy() → [2, Nx, Ny]"]
-    CG["create_graph.py\n(neural-lam, 614 lines)\nDUPLICATES WMG logic"]:::danger
-    PT[".pt files on disk\ng2m/m2m/m2g edge_index\n+ features"]
-    LG["load_graph()\n→ dict of 11 tensors\nno validation"]
-    MODEL["GraphLAM / HiLAM\nBaseGraphModel"]:::highlight
+    %% Column 1 (Forces nodes to stack vertically on the left)
+    subgraph Left_Column [" "]
+        direction TB
+        DS["<b>DataStore</b><br/>(BaseRegularGrid)<br/>get_xy() → [2, Nx, Ny]"]
+        CG["<b>create_graph.py</b><br/>(neural-lam, 614 lines)<br/>DUPLICATES WMG logic"]:::danger
+        LG["<b>load_graph()</b><br/>→ dict of 11 tensors<br/>no validation"]
+    end
 
-    IRR["❌ Irregular Data\nStations, satellites,\nship tracks"]:::danger
+    %% Column 2 (Forces nodes to stack vertically on the right)
+    subgraph Right_Column [" "]
+        direction TB
+        IRR["<b>Irregular Data</b><br/>Stations, satellites,<br/>ship tracks"]:::danger
+        PT["<b>.pt files on disk</b><br/>g2m/m2m/m2g edge_index<br/>+ features"]
+        MODEL["<b>GraphLAM / HiLAM</b><br/>BaseGraphModel"]:::highlight
+    end
 
-    DS --> CG --> PT --> LG --> MODEL
-    IRR -->|"NotImplementedError"| CG
+    %% Logical Connections (Creates a compact Z-Pattern)
+    DS --> CG
+    IRR -.->|"❌ Error"| CG
+    
+    CG --> PT
+    
+    PT --> LG
+    LG --> MODEL
+
+    %% Make the boundary boxes completely invisible
+    style Left_Column fill:none,stroke:none
+    style Right_Column fill:none,stroke:none
 ```
 
 ### 5.2 Data Source Support Matrix: Before vs After
@@ -319,24 +346,54 @@ flowchart LR
 ### 6.1 Proposed End-to-End Flow (replaces Section 5.1)
 
 ```mermaid
-flowchart LR
-    classDef default fill:#f8f9fa,stroke:#d1d5db,stroke-width:2px,rx:8px,color:#1f2937
-    classDef highlight fill:#e1f5fe,stroke:#0288d1,stroke-width:2px,rx:8px,color:#0f172a
+flowchart TD
+    %% Professional Color Palette
+    classDef source fill:#f8fafc,stroke:#94a3b8,stroke-width:1px,rx:6px,color:#334155
+    classDef engine fill:#eff6ff,stroke:#3b82f6,stroke-width:2px,rx:6px,color:#1e3a8a,font-weight:bold
+    classDef validate fill:#fff7ed,stroke:#f97316,stroke-width:2px,rx:6px,color:#9a3412,font-weight:bold
+    classDef runtime fill:#f0fdf4,stroke:#22c55e,stroke-width:2px,rx:6px,color:#14532d,font-weight:bold
 
-    subgraph Sources["Any Data Source"]
-        S1["Regular Grid"]
-        S2["Irregular Grid"]
-        S3["Scattered Obs"]
-        S4["Multi-Source"]
+    %% Row 1: Ingestion
+    subgraph Layer1 ["Data Ingestion & Build"]
+        direction LR
+        S1["Regular Grid"]:::source
+        S2["Irregular Grid"]:::source
+        S3["Scattered Obs"]:::source
+        S4["Multi-Source"]:::source
+        BG["build_graph.py\n(NEW — replaces\ncreate_graph.py)"]:::engine
+        
+        S1 --> BG
+        S2 --> BG
+        S3 --> BG
+        S4 --> BG
     end
 
-    BG["build_graph.py\n(NEW — replaces\ncreate_graph.py)"]:::highlight
-    WMG["weather-model-graphs\ncreate_all_graph_components()\nmesh_layout + m2m_connectivity"]:::highlight
-    VAL["validate() + to_pyg()\nGraphFormatValidator"]
-    LG["load_graph()\n→ pyg.HeteroData"]:::highlight
-    MODEL["GraphLAM / HiLAM\nHeteroData-native"]:::highlight
+    %% Row 2: Construction & Validation
+    subgraph Layer2 ["Graph Construction & Validation"]
+        direction LR
+        WMG["weather-model-graphs\ncreate_all_graph_components()\nmesh_layout + m2m_connectivity"]:::engine
+        VAL["validate() + to_pyg()\nGraphFormatValidator"]:::validate
+        
+        WMG --> VAL
+    end
 
-    Sources --> BG --> WMG --> VAL -->|".pt files"| LG --> MODEL
+    %% Row 3: Runtime
+    subgraph Layer3 ["Model Runtime"]
+        direction LR
+        LG["load_graph()\n→ pyg.HeteroData"]:::runtime
+        MODEL["GraphLAM / HiLAM\nHeteroData-native"]:::runtime
+        
+        LG --> MODEL
+    end
+
+    %% Inter-Layer Connections
+    Layer1 --> Layer2
+    Layer2 -->|".pt files"| Layer3
+
+    %% Clean, solid borders for a polished professional look
+    style Layer1 fill:#ffffff,stroke:#cbd5e1,stroke-width:2px,rx:8px
+    style Layer2 fill:#ffffff,stroke:#cbd5e1,stroke-width:2px,rx:8px
+    style Layer3 fill:#ffffff,stroke:#cbd5e1,stroke-width:2px,rx:8px
 ```
 
 ### 6.2 Layer 1: Foundation (My Existing PRs + v0.4.0 Fixes)
@@ -357,23 +414,39 @@ flowchart LR
 The bridge eliminates the 600-line code duplication between repos by making neural-lam call WMG directly.
 
 ```mermaid
-flowchart TD
-    classDef default fill:#f8f9fa,stroke:#d1d5db,stroke-width:2px,rx:8px,color:#1f2937
-    classDef highlight fill:#e1f5fe,stroke:#0288d1,stroke-width:2px,rx:8px,color:#0f172a
+flowchart LR
+    %% Professional Color Palette
+    classDef wmg fill:#E3F2FD,stroke:#1565C0,stroke-width:2px,color:#0D47A1,rx:4px
+    classDef contract fill:#F5F5F5,stroke:#424242,stroke-width:2px,color:#212121,rx:4px
+    classDef nl fill:#E8F5E9,stroke:#2E7D32,stroke-width:2px,color:#1B5E20,rx:4px
 
-    subgraph WMG_SIDE["WMG Side"]
-        V["validate_graph_components()\n• All nodes have pos, type attrs\n• No degree-0 in g2m\n• Level attrs consistent"]
-        TP["to_pyg() enhanced\n• Node-ID map preserved (#98)\n• Format matches schema"]
+    subgraph WMG ["WMG Side"]
+        direction TB
+        V["validate_graph_components()<br/>• All nodes have pos, type attrs<br/>• No degree-0 in g2m<br/>• Level attrs consistent"]:::wmg
+        TP["to_pyg() enhanced<br/>• Node-ID map preserved (#98)<br/>• Format matches schema"]:::wmg
+        
+        %% Internal vertical stacking
+        V --> TP
     end
 
-    GFV["GraphFormatValidator\n(Shared Contract)"]:::highlight
+    GFV["GraphFormatValidator<br/>(Shared Contract)"]:::contract
 
-    subgraph NL_SIDE["neural-lam Side"]
-        BG["build_graph.py (NEW)\n• Calls WMG directly\n• Replaces create_graph.py"]:::highlight
-        LG["load_graph() enhanced\n• Reindexes edge_index\n• Rescales features\n• Returns HeteroData"]
+    subgraph NL ["neural-lam Side"]
+        direction TB
+        BG["build_graph.py (NEW)<br/>• Calls WMG directly<br/>• Replaces create_graph.py"]:::nl
+        LG["load_graph() enhanced<br/>• Reindexes edge_index<br/>• Rescales features<br/>• Returns HeteroData"]:::nl
+        
+        %% Internal vertical stacking
+        BG --> LG
     end
 
-    V --> TP --> GFV --> BG --> LG
+    %% Connect the outer containers to force a straight horizontal line
+    WMG --> GFV
+    GFV --> NL
+
+    %% Styling for the outer dashed boxes
+    style WMG fill:#FAFAFA,stroke:#BDBDBD,stroke-dasharray: 5 5,color:#424242,rx:8px
+    style NL fill:#FAFAFA,stroke:#BDBDBD,stroke-dasharray: 5 5,color:#424242,rx:8px
 ```
 
 The `GraphFormatValidator` is a shared schema that both repos use to validate `.pt` files. It ensures that every exported graph has the required `edge_index.pt` and `features.pt` for each component (g2m, m2m, m2g), with matching dimensions and valid ranges.
@@ -383,27 +456,36 @@ The `GraphFormatValidator` is a shared schema that both repos use to validate `.
 **The problem:** `load_graph()` currently returns a `dict` with 11 fragile string keys. No type safety, no schema validation, no named node/edge types.
 
 ```mermaid
-flowchart LR
-    classDef default fill:#f8f9fa,stroke:#d1d5db,stroke-width:2px,rx:8px,color:#1f2937
-    classDef highlight fill:#e1f5fe,stroke:#0288d1,stroke-width:2px,rx:8px,color:#0f172a
+flowchart TB
+    %% Professional styling: Clean monochrome and subtle blues for readability
+    classDef default fill:#ffffff,stroke:#94a3b8,stroke-width:2px,rx:6px,color:#1e293b
+    classDef highlight fill:#f0f9ff,stroke:#0288d1,stroke-width:2px,rx:8px,color:#0f172a,font-weight:bold
 
-    subgraph OLD["Current: Dict of Tensors"]
+    subgraph OLD ["Current: Dict of Tensors"]
+        direction TB
         O1["graph_dict['g2m_edge_index']"]
         O2["graph_dict['m2m_edge_index'] — BufferList"]
         O3["graph_dict['m2g_edge_index']"]
         O4["graph_dict['mesh_static_features']"]
     end
 
-    ARROW["→ Migration →"]:::highlight
+    ARROW["⬇ MIGRATION ⬇"]:::highlight
 
-    subgraph NEW["Proposed: pyg.HeteroData"]
+    subgraph NEW ["Proposed: pyg.HeteroData"]
+        direction TB
         N1["data['grid','g2m','mesh'].edge_index"]
         N2["data['mesh','m2m','mesh'].edge_index"]
         N3["data['mesh','m2g','grid'].edge_index"]
         N4["data['mesh'].x"]
     end
 
-    OLD --> ARROW --> NEW
+    %% Flow connections forcing the 3-row stacked layout
+    OLD --> ARROW
+    ARROW --> NEW
+
+    %% Subgraph styling for a polished, contained look
+    style OLD fill:#f8fafc,stroke:#cbd5e1,stroke-dasharray: 5 5,color:#334155,rx:8px
+    style NEW fill:#f8fafc,stroke:#cbd5e1,stroke-dasharray: 5 5,color:#334155,rx:8px
 ```
 
 **Benefits of HeteroData:**
@@ -497,16 +579,20 @@ The most **research-forward** contribution. After training, identify regions whe
 
 ```mermaid
 flowchart LR
-    classDef default fill:#f8f9fa,stroke:#d1d5db,stroke-width:2px,rx:8px,color:#1f2937
-    classDef highlight fill:#e1f5fe,stroke:#0288d1,stroke-width:2px,rx:8px,color:#0f172a
+    %% Professional Styling: Slate borders, crisp whites, and corporate blue highlights
+    classDef default fill:#ffffff,stroke:#64748b,stroke-width:2px,rx:6px,color:#1e293b
+    classDef highlight fill:#f0f9ff,stroke:#0284c7,stroke-width:2px,rx:6px,color:#0f172a
 
-    T1["1. Train Model\nwith initial mesh\n(uniform spacing)"]:::highlight
-    E["2. Error Analysis\nCompute per-grid-point\nprediction errors"]
-    R["3. Mesh Densification\nGaussian KDE of errors\n→ local spacing function\n→ denser where errors high"]:::highlight
-    T2["4. Retrain Model\nwith refined mesh\n(adapted spacing)"]
+    T1["<b>1. Train Model</b><br/>with initial mesh<br/>(uniform spacing)"]:::highlight
+    E["<b>2. Error Analysis</b><br/>Compute per-grid-point<br/>prediction errors"]
+    R["<b>3. Mesh Densification</b><br/>Gaussian KDE of errors<br/>→ local spacing function<br/>→ denser where errors high"]:::highlight
+    T2["<b>4. Retrain Model</b><br/>with refined mesh<br/>(adapted spacing)"]
 
+    %% Process flow
     T1 --> E --> R --> T2
-    T2 -.->|"iterate until\nconvergence"| E
+    
+    %% Feedback loop
+    T2 -.->|"iterate until<br/>convergence"| E
 ```
 
 **How it works in detail:**
@@ -555,16 +641,19 @@ Near poles, Euclidean distance **OVERESTIMATES** east-west distances by a factor
 **My Proposed Solution:** A `CoordinateSystem` abstraction that ALL graph operations use internally, making WMG coordinate-system-aware:
 
 ```mermaid
-flowchart TD
-    classDef default fill:#f8f9fa,stroke:#d1d5db,stroke-width:2px,rx:8px,color:#1f2937
-    classDef highlight fill:#e1f5fe,stroke:#0288d1,stroke-width:2px,rx:8px,color:#0f172a
+flowchart TB
+    %% Light Professional Styling: Dashed border for Abstract, crisp blues for new classes
+    classDef baseClass fill:#f8fafc,stroke:#475569,stroke-width:2px,stroke-dasharray: 5 5,rx:6px,color:#0f172a
+    classDef existingClass fill:#ffffff,stroke:#94a3b8,stroke-width:1px,rx:6px,color:#334155
+    classDef newClass fill:#f0f9ff,stroke:#0284c7,stroke-width:2px,rx:6px,color:#0f172a
 
-    CS["CoordinateSystem (ABC)\ndistance(A,B) · midpoint(A,B)\narea(polygon) · bearing(A,B)\nproject(latlon)"]:::highlight
+    CS["<b>CoordinateSystem (ABC)</b><br/>distance(A,B) · midpoint(A,B)<br/>area(polygon) · bearing(A,B)<br/>project(latlon)"]:::baseClass
 
-    P["ProjectedCS\n(current default)\nd = L2 Euclidean"]
-    S["SphericalCS (NEW)\nd = Haversine\nradius = 6371 km"]:::highlight
-    R["RotatedPoleCS (NEW)\nFor LAM grids\nd = Vincenty"]:::highlight
+    P["<b>ProjectedCS</b><br/>(current default)<br/>d = L2 Euclidean"]:::existingClass
+    S["<b>SphericalCS (NEW)</b><br/>d = Haversine<br/>radius = 6371 km"]:::newClass
+    R["<b>RotatedPoleCS (NEW)</b><br/>For LAM grids<br/>d = Vincenty"]:::newClass
 
+    %% Architecture flow
     CS --> P
     CS --> S
     S --> R
@@ -680,14 +769,19 @@ def weighted_farthest_point_sampling(positions, weights, n_coarse, seed=42):
 
 ```mermaid
 flowchart TD
-    classDef default fill:#f8f9fa,stroke:#d1d5db,stroke-width:2px,rx:8px,color:#1f2937
-    classDef highlight fill:#e1f5fe,stroke:#0288d1,stroke-width:2px,rx:8px,color:#0f172a
+    %% Classic Professional Styling
+    classDef inputData fill:#ffffff,stroke:#94a3b8,stroke-width:2px,rx:6px,color:#334155
+    classDef newProcess fill:#f0f9ff,stroke:#0284c7,stroke-width:2px,rx:6px,color:#0f172a
+    classDef finalModel fill:#f8fafc,stroke:#475569,stroke-width:2px,rx:6px,color:#0f172a
 
-    BG["Static Base Graph (from WMG)\nAll possible edges\nmesh_layout determines node positions"]
-    WS["Current Atmospheric State\n(temperature, pressure, wind at each node)"]
-    DEA["DynamicEdgeAttention (NEW)\nComputes a_ij = f(h_i, h_j) per edge\nPrunes edges where a_ij below threshold\nWeights remaining edges by attention"]:::highlight
-    GNN["GNN Processing (GraphLAM/HiLAM)\nMessage passing on adapted graph\nDifferent effective topology per timestep"]:::highlight
+    BG["<b>Static Base Graph (from WMG)</b><br/>All possible edges<br/>mesh_layout determines node positions"]:::inputData
+    WS["<b>Current Atmospheric State</b><br/>(temperature, pressure, wind at each node)"]:::inputData
+    
+    DEA["<b>DynamicEdgeAttention (NEW)</b><br/>Computes a_ij = f(h_i, h_j) per edge<br/>Prunes edges where a_ij below threshold<br/>Weights remaining edges by attention"]:::newProcess
+    
+    GNN["<b>GNN Processing (GraphLAM/HiLAM)</b><br/>Message passing on adapted graph<br/>Different effective topology per timestep"]:::finalModel
 
+    %% Architecture flow
     BG --> DEA
     WS --> DEA
     DEA --> GNN
