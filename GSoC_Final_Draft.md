@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="gsoc_logo.svg" alt="Google Summer of Code" height="80" />
+  <img src="https://raw.githubusercontent.com/prajwal-tech07/Gsoc_test/main/gsoc_logo.svg?sanitize=true" alt="Google Summer of Code" height="80" />
 </div>
 <br />
 
@@ -16,7 +16,7 @@
 
 | | |
 | :--- | :--- |
-| **Organization:** <img src="mllam_logo.png" width="18" align="center"/> **MLLAM** | **Project Length:** 350 hours (Large) |
+| **Organization:** <img src="https://raw.githubusercontent.com/prajwal-tech07/Gsoc_test/main/mllam_logo.png" width="18" align="center"/> **MLLAM** | **Project Length:** 350 hours (Large) |
 | **Project Idea:** [Flexible Graph Construction (#1)](https://github.com/mllam/neural-lam/wiki/GSoC-ideas#1-flexible-graph-construction) | **Difficulty:** Medium |
 | **Repositories:** [weather-model-graphs](https://github.com/mllam/weather-model-graphs), [neural-lam](https://github.com/mllam/neural-lam) | **Mentors:** Hauke Schulz, Leif Denby, Joel Oskarsson |
 | **Applicant:** Prajwal Hawaldar | |
@@ -811,6 +811,6 @@ Every deliverable maps to an open issue, mentor priority, or novel research cont
 
 ---
 
-*Proposal prepared by: Prajwal [Your Last Name]*
-*Last updated: March 18, 2026*
+*Proposal prepared by: Prajwal Hawaldar*
+*Last updated: March 19, 2026*
 *GitHub: [github.com/prajwal-tech07](https://github.com/prajwal-tech07)*
