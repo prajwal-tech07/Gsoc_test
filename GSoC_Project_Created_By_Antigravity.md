@@ -1,24 +1,26 @@
-<p align="center">
-  <img src="gsoc_logo.svg" alt="Google Summer of Code" height="65" align="left" />
-  <img src="mllam_logo.png" alt="MLLAM" height="65" align="right" />
-</p>
+<div>
+  <img src="gsoc_logo.svg" alt="Google Summer of Code" height="70" align="left" />
+  <img src="mllam_logo.png" alt="MLLAM" height="70" align="right" />
+</div>
+<br clear="all" />
+<br />
 
 <div align="center">
 
-### **Flexible Graph Construction: A Unified Pipeline for Universal Graph Topologies in Neural Weather Prediction**
-
-*GSoC 2026 · MLLAM · Idea #1 · 350 hours (Large) · Medium Difficulty*
+# **Flexible Graph Construction**
+### *A Unified Pipeline for Universal Graph Topologies in Neural Weather Prediction*
 
 </div>
 
-<br clear="all" />
+<br />
 
 | | |
 | :--- | :--- |
-| **Organization:** MLLAM | **Project Length:** 350 hours (Large) |
-| **Project:** [Flexible Graph Construction](https://github.com/mllam/neural-lam/wiki/GSoC-ideas#1-flexible-graph-construction) (Idea #1) | **Difficulty:** Medium |
-| **Repositories:** [weather-model-graphs](https://github.com/mllam/weather-model-graphs) (WMG), [neural-lam](https://github.com/mllam/neural-lam) | **Mentors:** Hauke Schulz, Leif Denby, Joel Oskarsson |
-| **Applicant:** Prajwal [Your Last Name] · [prajwal-tech07](https://github.com/prajwal-tech07) | **Timezone:** UTC+5:30 · 30–35 hrs/week |
+| **Organization:** <img src="mllam_logo.png" width="18"/> **MLLAM** | **Project Length:** 350 hours (Large) |
+| **Project Idea:** [Flexible Graph Construction (#1)](https://github.com/mllam/neural-lam/wiki/GSoC-ideas#1-flexible-graph-construction) | **Difficulty:** Medium |
+| **Repositories:** [weather-model-graphs](https://github.com/mllam/weather-model-graphs), [neural-lam](https://github.com/mllam/neural-lam) | **Mentors:** Hauke Schulz, Leif Denby, Joel Oskarsson |
+| **Applicant:** Prajwal Hawaldar | **GitHub:** [@prajwal-tech07](https://github.com/prajwal-tech07) |
+| **Timezone:** UTC+5:30 (IST) | **Commitment:** 30–35 hrs/week |
 
 ---
 
