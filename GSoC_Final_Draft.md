@@ -570,7 +570,7 @@ graph["mesh", "to", "grid_nwp"].edge_index        # mesh → NWP predictions
 
 ### 7.1 Graph Quality Metrics Framework (Layer 4)
 
-Provides a `GraphQualityReport` to quantify mesh quality *before* expensive model training across four dimensions:
+With flexible graph construction enabling dozens of possible mesh topologies, users need a principled way to evaluate which topology is best for their domain — **without** having to train an expensive model for each one. The `GraphQualityReport` solves this by providing four quantitative metrics that can be computed directly from graph structure alone.
 
 ```mermaid
 graph TD
@@ -599,9 +599,11 @@ The `GraphQualityReport` computes four independent metrics that together charact
 | **Spectral Gap** | λ₂ (Fiedler value of Laplacian) | > 0.01 | Message-passing mixing speed |
 | **G2M Balance** | CV(mesh_node_g2m_degree) | CV < 0.5 | Even grid-to-mesh load distribution |
 
+**Integration with WMG:** The `GraphQualityReport` hooks into `create_all_graph_components()` as an optional post-processing step. After any graph is constructed (regardless of `mesh_layout` or `m2m_connectivity`), calling `GraphQualityReport(graph)` returns all four metrics. This enables automated topology comparison: users can script a loop over layout/connectivity combinations and rank them by composite quality score, selecting the best topology before any training begins.
+
 ### 7.2 Density-Adaptive Mesh Generation (Layer 4)
 
-Uniform meshes waste nodes in data-sparse regions. This algorithm builds adaptive spacings using Voronoi cell areas:
+Uniform meshes waste computational resources: they place the same number of mesh nodes in data-dense regions (e.g., a cluster of weather stations) as in data-sparse regions (e.g., open ocean). This algorithm builds meshes that are automatically denser where data is denser, using Voronoi cell areas to estimate local data density.
 
 ```mermaid
 flowchart LR
@@ -619,18 +621,25 @@ flowchart LR
     A --> B --> C --> D --> E --> F
 ```
 
-The algorithm takes scattered data points, computes local density via Voronoi cell areas, converts density into a variable spacing map, then places mesh nodes using Poisson disk sampling with spatially varying exclusion radius. Finally, Delaunay triangulation connects the adaptively placed nodes. This integrates into WMG as a new `mesh_layout="density_adaptive"` option — it produces node coordinates that any `m2m_connectivity` mode (flat, hierarchical, flat_multiscale) can then connect.
+The algorithm takes scattered data points, computes local density via Voronoi cell areas, converts density into a variable spacing map, then places mesh nodes using Poisson disk sampling with spatially varying exclusion radius. Finally, Delaunay triangulation connects the adaptively placed nodes.
 
-**Key parameters:** `base_mesh_distance` (baseline spacing), `density_scaling` (0.0 = uniform → 1.0 = fully proportional), `min/max_mesh_distance` (degenerate element clamps).
+**How this integrates with the two-step architecture from [PR #81](https://github.com/mllam/weather-model-graphs/pull/81):**
+
+- **Step 1 (Coordinate Creation — `mesh_layout` side):** Density-adaptive is a new `mesh_layout="density_adaptive"` option. Instead of placing mesh nodes on a regular lattice (like `rectilinear`) or a triangular lattice (like `triangular`), it takes the input data point positions, computes local data density using `scipy.spatial.Voronoi`, maps density to local mesh spacing via `spacing(x) = base_distance / (density(x) / mean_density)^scaling`, and places mesh nodes using variable-radius Poisson disk sampling (Bridson 2007). The **output** is the same as any other `mesh_layout` — an `nx.Graph` with nodes having `(x, y)` position attributes.
+- **Step 2 (Connectivity Creation — `m2m_connectivity` side):** Once the adaptive node positions are placed, the connectivity step works **identically** to any other layout. You can use `flat` (Delaunay triangulation on the adaptive nodes), `flat_multiscale`, or `hierarchical` — the connectivity functions don't care how the node positions were generated.
+
+In short: density-adaptive **alters where mesh nodes are placed** (Step 1), NOT how they are connected (Step 2). Any connectivity mode can be applied on top, exactly as with rectilinear or triangular layouts.
+
+**Key parameters:** `base_mesh_distance` (baseline spacing when density is uniform), `density_scaling` (0.0 = ignore density, uniform mesh → 1.0 = fully proportional to local data density), `min_mesh_distance` / `max_mesh_distance` (prevents degenerate elements in extremely dense/sparse regions).
 
 ### 7.3 Adaptive Mesh Refinement — AMR (Layer 4)
 
-A machine-learning feedback loop where mesh structures adapt locally to minimize prediction error:
+While Section 7.2 creates meshes that adapt to **data density** (where observations are clustered), AMR goes one step further: it adapts mesh density based on **prediction error** — automatically placing more mesh nodes in regions where the model struggles. This creates a feedback loop between model training and mesh construction.
 
 ```mermaid
 flowchart LR
     classDef train fill:#eff6ff,stroke:#3b82f6,stroke-width:2px,rx:6px,color:#1e3a8a
-    classDef analyze fill:#fef3c7,stroke:#d97706,stroke-width:2px,rx:6px,color:#92400e
+    classDef analyze fill:#fef3c7,stroke:#d97706,stroke-width:2px,rx:6px,color:#0c4a6e
     classDef refine fill:#dcfce7,stroke:#16a34a,stroke-width:2px,rx:6px,color:#14532d
 
     T["Train"]:::train
@@ -643,11 +652,27 @@ flowchart LR
     RT -.->|"iterate"| A
 ```
 
-AMR is an outer loop around model training. After each training cycle, per-grid-point prediction errors are mapped via `scipy.stats.gaussian_kde` to a smooth error density surface, which WMG's `density_adaptive` layout then uses to generate a refined mesh with denser nodes in high-error regions. The loop repeats until mesh quality metrics converge.
+AMR is an outer loop around model training. After each training cycle, per-grid-point prediction errors are mapped to a smooth error density surface, which generates a refined mesh with denser nodes in high-error regions. The loop repeats until mesh quality metrics converge.
+
+**Concrete training loop integration with software packages:**
+
+| Step | What Happens | Software Used |
+|------|-------------|---------------|
+| 1. **Build graph** | Create initial mesh from data coordinates | WMG: `create_all_graph_components(mesh_layout=..., ...)` |
+| 2. **Train model** | Standard GNN training on this mesh | neural-lam: pytorch-lightning training loop |
+| 3. **Compute errors** | Calculate per-grid-point prediction errors on validation set | neural-lam: metrics module |
+| 4. **Build error density** | Smooth the spatial error distribution into a continuous surface | `scipy.stats.gaussian_kde(error_positions, weights=errors)` |
+| 5. **Compute new spacing** | Convert error density to mesh spacing: denser where errors are high | `spacing(x) = base / (1 + refine_factor × kde(x))` |
+| 6. **Generate refined mesh** | Build new mesh using error-driven spacing map | WMG: `density_adaptive` with new spacing map |
+| 7. **Iterate** | Return to Step 2 with the refined mesh; stop when `GraphQualityReport` (Section 7.1) shows convergence | Convergence check via quality metric delta |
+
+The outer loop would be implemented as a new CLI command in neural-lam or a standalone script. AMR builds directly on top of the density-adaptive mesh from Section 7.2 — it simply replaces the "data density" input with "error density" as the spacing driver.
 
 Research basis: G-Adaptivity (2024) for GNN mesh movement, Multiscale AMR-GNN (2023) for over-smoothing mitigation.
 
 ### 7.4 Stretched-Grid & Topology Benchmarks (Layer 5)
+
+Stretched grids are used in operational weather models like ECMWF's AIFS to focus computational resolution on a target region (e.g., Europe) while maintaining global coverage at coarser resolution. The topology benchmarking suite provides metrics to objectively compare any mesh topology — including stretched grids — without needing to train a model.
 
 ```mermaid
 graph LR
@@ -673,12 +698,12 @@ graph LR
 
 The benchmarking suite (left) provides three topology metrics that rank different mesh configurations WITHOUT training a model. The stretched-grid module (right) creates meshes with high resolution in a focus region that smoothly tapers to coarser resolution outward — these can be evaluated using the benchmarking metrics.
 
-* **Topology Benchmarking Suite (`wmg_benchmark.py`):** Ranks constructed domains dynamically against IPD, ERF, and Edge Efficiency Ratios — enabling topology comparison *without model training*.
-* **Stretched Grids:** Support for regional high-resolution tapering outward — matching the ECMWF AIFS blueprint natively within the `create_all_graph_components()` workflow.
+* **Topology Benchmarking Suite (`wmg_benchmark.py`):** A standalone module that takes any WMG-generated graph and computes IPD (graph diameter — how many message-passing steps information needs to cross the domain), ERF (effective receptive field — the actual spatial area influenced after K hops), and Edge Efficiency Ratio (ratio of useful edges to total edges). This lets users run `python -m wmg_benchmark --layout triangular --connectivity flat_multiscale` and get a ranked comparison table without touching neural-lam or training any model.
+* **Stretched Grids:** Implemented as a new `mesh_layout="stretched"` option. The user specifies `focus_center` (lat/lon), `focus_radius`, and `stretch_factor`. Inside the focus region, mesh spacing equals `base_mesh_distance / stretch_factor` (high resolution). Outside, spacing transitions smoothly via a sigmoid function back to `base_mesh_distance` (coarse resolution). Node placement uses the same variable-radius Poisson disk sampling as density-adaptive (Section 7.2), so it reuses the same algorithmic backend.
 
 ### 7.5 State-of-the-Art Sub-Components (Layer 5)
 
-These modules represent cutting-edge research targets to be explored upon successful integration of the core architectural roadmap:
+These modules represent cutting-edge research targets. Each is fully independent and self-contained — they can be implemented in any order once the core Layers 1–3 are merged. Below is a summary of what each solves, followed by how each integrates with the existing codebase:
 
 ```mermaid
 flowchart LR
@@ -703,6 +728,14 @@ flowchart LR
 | **⚡ Dynamic Edges** | Static graphs can't adapt to moving weather systems | `DynamicEdgeAttention` selects per-timestep edges via learned attention | RTEC / TAEGCN (2024) |
 | **📊 Analysis Dashboard** | No tools to visually understand WHY a topology works | `GraphAnalysisPlot`: receptive field heatmaps, Laplacian spectrum, G2M density | Extends `plot_2d.py` |
 | **📦 DataTree Format** | Opaque `.pt` files with no provenance metadata | Self-describing `graph.zarr/` tree with quality metrics + generation params | Aligns with WMG [PR #47](https://github.com/mllam/weather-model-graphs/pull/47) |
+
+**Integration details for each module:**
+
+- **🌐 Spherical Construction:** Currently, WMG computes edge distances and KD-tree lookups using Euclidean (x, y) coordinates, which introduces systematic distortion at high latitudes. This module introduces a `CoordinateSystem` abstraction that plugs into `create_all_graph_components()` — all distance computations (g2m/m2g KD-tree, m2m edge features) route through `coord_system.distance(p1, p2)` instead of `np.linalg.norm`. Switching between Euclidean and spherical (Haversine) becomes a single parameter: `coordinate_system="spherical"`.
+- **🔬 Learned Coarsening:** The current hierarchical multi-scale mesh uses rigid stride-based coarsening (every Nth node). This module replaces that with Weighted Farthest Point Sampling + spectral clustering that *preserves* the graph's Fiedler eigenvalue (algebraic connectivity) across coarsening levels. It integrates as a new `coarsening_strategy="learned"` option in the `hierarchical` connectivity mode.
+- **⚡ Dynamic Edges:** Static graph structures cannot adapt to rapidly evolving weather systems (e.g., a cyclone moving across the domain). `DynamicEdgeAttention` is a neural-lam model layer that, at each forward pass timestep, computes attention scores over candidate edges and selects the top-k — effectively allowing the model to rewire its message-passing graph based on the current atmospheric state.
+- **📊 Analysis Dashboard:** Extends neural-lam's existing `plot_2d.py` with interactive topology visualization: receptive field heatmaps ("what spatial area does mesh node X influence after K hops?"), Laplacian spectrum plots, and g2m degree density maps. This gives researchers visual intuition for *why* one topology outperforms another.
+- **📦 DataTree Format:** Replaces opaque `.pt` tensor files with self-describing `graph.zarr/` trees using `xr.DataTree`. Each exported graph carries its generation parameters, quality metrics (from Section 7.1), and provenance metadata — making experiments reproducible and graphs inspectable without loading them into PyTorch. Aligns with the existing WMG [PR #47](https://github.com/mllam/weather-model-graphs/pull/47) direction.
 
 <div style="page-break-after: always;"></div>
 
