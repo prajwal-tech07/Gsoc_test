@@ -68,7 +68,7 @@ I am a Computer Science undergraduate with a strong foundation in machine learni
 
 I have been actively contributing to both repositories with **substantive architectural PRs**, not cosmetic fixes — and through community discussions I shaped the core architectural direction that this proposal now implements.
 
-### 2.1 The Architectural Pillars: Issues #384 & #385
+### 2.1 The Architectural Pillars: Issues [#384](https://github.com/mllam/neural-lam/issues/384) & [#385](https://github.com/mllam/neural-lam/issues/385)
 
 Through active participation in the bridging discussion ([#339](https://github.com/mllam/neural-lam/issues/339)), I conceptualized the core idea of unifying WMG and neural-lam via `HeteroData`. These ideas were formalized as two strategic issues — the **twin pillars** of this GSoC project:
 
@@ -165,6 +165,8 @@ style CORE_ROW fill:#f8fafc,stroke:#cbd5e1
 style ADV_ROW fill:#f8fafc,stroke:#cbd5e1
 ```
 
+Layers 1–3 are the guaranteed core deliverables — they build sequentially (foundation → bridge → architecture migration). Layers 4 and 5 are modular stretch goals that each stand alone, so any subset can be completed in the remaining weeks without blocking the core pipeline.
+
 <div style="page-break-after: always;"></div>
 
 ## 4. Motivation & Problem Statement
@@ -210,11 +212,13 @@ D --> E
 style ENGINE fill:#f8fafc,stroke:#cbd5e1,stroke-dasharray: 5 5
 ```
 
+Atmospheric data at grid nodes flows left-to-right through the GNN. The g2m encoder maps grid data onto a coarser mesh, where m2m message-passing propagates information across the domain over K rounds, then the m2g decoder maps mesh representations back to grid-point predictions.
+
 The mesh topology **directly determines** what the model can learn. The number of message-passing steps needed for information to traverse the domain equals the graph diameter. Edge features encode spatial relationships. Yet today, **only regular rectangular grids** are supported, because `create_graph.py` hardcodes `networkx.grid_2d_graph(Nx, Ny)`.
 
-### 4.2 The Two-Step Mesh Architecture (My PR #81)
+### 4.2 The Two-Step Mesh Architecture (My [PR #81](https://github.com/mllam/weather-model-graphs/pull/81))
 
-My core architectural contribution in PR #81 separates mesh creation into two independent, composable steps:
+My core architectural contribution in [PR #81](https://github.com/mllam/weather-model-graphs/pull/81) separates mesh creation into two independent, composable steps:
 
 ```mermaid
 flowchart LR
@@ -251,6 +255,8 @@ flowchart LR
     S2 --> B2
     S2 --> B3
 ```
+
+Step 1 (left) selects WHERE mesh nodes are placed via `mesh_layout` — any of the five layout backends can feed into Step 2 (right), which selects HOW those nodes are connected via `m2m_connectivity`. This two-step separation is what makes the entire flexible graph vision possible.
 
 Any `mesh_layout` can combine with any `m2m_connectivity` — creating a **combinatorial explosion** of graph topologies from minimal code. This is the foundation upon which ALL other contributions in this proposal are built.
 
@@ -295,6 +301,8 @@ flowchart TD
     style WMG fill:#f8fafc,stroke:#cbd5e1,stroke-width:2px,stroke-dasharray: 5 5,color:#1e293b
     style NL fill:#fcf0f0,stroke:#fecdd3,stroke-width:2px,stroke-dasharray: 5 5,color:#9f1239
 ```
+
+WMG (top-left) is the intended source of truth for graph creation, but neural-lam's `create_graph.py` (bottom-left) reimplements the same logic with a hardcoded rectangular assumption. Irregular data hits a `NotImplementedError` because the duplicated code assumes `nx.grid_2d_graph`.
 
 The **core blocking line** in neural-lam:
 ```python
@@ -356,6 +364,8 @@ flowchart TD
     style Left_Column fill:none,stroke:none
     style Right_Column fill:none,stroke:none
 ```
+
+Data flows top-down through the current pipeline: the DataStore provides coordinates to `create_graph.py`, which writes `.pt` files loaded by `load_graph()` into the GNN model. Irregular data (stations, satellites, ships) cannot enter this pipeline at all — the red nodes show where the flow is blocked.
 
 ### 5.2 Data Source Support Matrix: Before vs After
 
@@ -428,20 +438,22 @@ flowchart TD
     style Layer3 fill:#ffffff,stroke:#cbd5e1,stroke-width:2px,rx:8px
 ```
 
+The proposed pipeline replaces the current monolithic `create_graph.py` with a three-layer architecture. Layer 1 handles data ingestion from any source type into `build_graph.py`. Layer 2 delegates graph construction to WMG and validates the output. Layer 3 loads the validated graph as a `pyg.HeteroData` object directly into the model.
+
 ### 6.2 Layer 1: Foundation (My Existing PRs + v0.4.0 Fixes)
 
-**PR #81 — `mesh_layout` parameter:** Decouples coordinate creation from connectivity creation. The `mesh_layout` parameter (`"rectilinear"`, `"triangular"`, `"prebuilt"`) controls WHERE mesh nodes are placed. The `m2m_connectivity` parameter (`"flat"`, `"flat_multiscale"`, `"hierarchical"`) controls HOW they are connected. This two-step architecture is the foundation for all other work.
+**[PR #81](https://github.com/mllam/weather-model-graphs/pull/81) — `mesh_layout` parameter:** Decouples coordinate creation from connectivity creation. The `mesh_layout` parameter (`"rectilinear"`, `"triangular"`, `"prebuilt"`) controls WHERE mesh nodes are placed. The `m2m_connectivity` parameter (`"flat"`, `"flat_multiscale"`, `"hierarchical"`) controls HOW they are connected. This two-step architecture is the foundation for all other work.
 
-**PR #92 — Triangular Delaunay mesh:** Adds `mesh_layout="triangular"` using `scipy.spatial.Delaunay` triangulation. This enables non-rectangular meshes for hexagonal, reduced Gaussian, and icosahedral grids.
+**[PR #92](https://github.com/mllam/weather-model-graphs/pull/92) — Triangular Delaunay mesh:** Adds `mesh_layout="triangular"` using `scipy.spatial.Delaunay` triangulation. This enables non-rectangular meshes for hexagonal, reduced Gaussian, and icosahedral grids.
 
-**PR #91 — Prebuilt mesh pathway:** Adds `mesh_layout="prebuilt"` allowing users to inject arbitrary mesh node positions (e.g., from ICON or MPAS model grids).
+**[PR #91](https://github.com/mllam/weather-model-graphs/pull/91) — Prebuilt mesh pathway:** Adds `mesh_layout="prebuilt"` allowing users to inject arbitrary mesh node positions (e.g., from ICON or MPAS model grids).
 
 **v0.4.0 blockers:**
-- **#40 — Convex hull cropping:** `crop_mesh_to_convex_hull()` via `scipy.spatial.ConvexHull` to remove mesh nodes outside the data domain.
-- **#42 — G2M assertion:** Detect and auto-fix degree-0 mesh nodes in g2m connections.
-- **#45 — Level attributes:** Replace inconsistent `"level"`(int)/`"levels"`(str) with `from_level`/`to_level` (both int).
+- **[#40](https://github.com/mllam/weather-model-graphs/issues/40) — Convex hull cropping:** `crop_mesh_to_convex_hull()` via `scipy.spatial.ConvexHull` to remove mesh nodes outside the data domain.
+- **[#42](https://github.com/mllam/weather-model-graphs/issues/42) — G2M assertion:** Detect and auto-fix degree-0 mesh nodes in g2m connections.
+- **[#45](https://github.com/mllam/weather-model-graphs/issues/45) — Level attributes:** Replace inconsistent `"level"`(int)/`"levels"`(str) with `from_level`/`to_level` (both int).
 
-### 6.3 Layer 2: The Bridge (Issue #384)
+### 6.3 Layer 2: The Bridge ([Issue #384](https://github.com/mllam/neural-lam/issues/384))
 
 The bridge eliminates the 600-line code duplication between repos by making neural-lam call WMG directly.
 
@@ -481,9 +493,11 @@ flowchart LR
     style NL fill:#FAFAFA,stroke:#BDBDBD,stroke-dasharray: 5 5,color:#424242,rx:8px
 ```
 
+The WMG side (left) validates graph structure and exports to `.pt` format. The shared `GraphFormatValidator` contract (center) ensures both repos agree on the format. The neural-lam side (right) replaces `create_graph.py` with `build_graph.py` that calls WMG directly, eliminating 600+ lines of duplicated code.
+
 The `GraphFormatValidator` is a shared schema that both repos use to validate `.pt` files. It ensures that every exported graph has the required `edge_index.pt` and `features.pt` for each component (g2m, m2m, m2g), with matching dimensions and valid ranges.
 
-### 6.4 Layer 3: pyg.HeteroData Migration (Issue #385)
+### 6.4 Layer 3: pyg.HeteroData Migration ([Issue #385](https://github.com/mllam/neural-lam/issues/385))
 
 **The problem:** `load_graph()` currently returns a `dict` with 11 fragile string keys. No type safety, no schema validation, no named node/edge types.
 
@@ -505,10 +519,10 @@ flowchart TB
 
     subgraph NEW ["Proposed: pyg.HeteroData"]
         direction TB
-        N1["data['grid','g2m','mesh'].edge_index"]
-        N2["data['mesh','m2m','mesh'].edge_index"]
-        N3["data['mesh','m2g','grid'].edge_index"]
-        N4["data['mesh'].x"]
+        N1["graph['grid','to','mesh'].edge_index"]
+        N2["graph['mesh','to','mesh'].edge_index"]
+        N3["graph['mesh','to','grid'].edge_index"]
+        N4["graph['mesh'].x"]
     end
 
     %% Flow connections forcing the 3-row stacked layout
@@ -520,10 +534,12 @@ flowchart TB
     style NEW fill:#f8fafc,stroke:#cbd5e1,stroke-dasharray: 5 5,color:#334155,rx:8px
 ```
 
+The top box shows the current dict-of-tensors approach with 11 fragile string keys. The bottom box shows the proposed `pyg.HeteroData` structure where each edge type is accessed through a typed triplet `(source_type, relation, target_type)`, providing built-in validation and self-documenting access patterns.
+
 **Benefits of HeteroData:**
 - **Single `.to(device)` call** moves everything to GPU (instead of 11 individual transfers)
 - **Schema validation** built into PyG — wrong shapes fail immediately
-- **Typed access** — `data['grid', 'g2m', 'mesh']` is self-documenting
+- **Typed access** — `graph["grid", "to", "mesh"].edge_index` is self-documenting (following `pyg.HeteroData` conventions)
 - **Extensible** — adding new node/edge types (e.g., `grid_station`) is trivial
 
 **3-Step incremental migration (each step is non-breaking):**
@@ -540,9 +556,9 @@ Construct heterogeneous graphs from **multiple data sources** with different spa
 
 ```python
 # HeteroData naturally represents multi-source graphs:
-data['grid_nwp', 'g2m', 'mesh'].edge_index       # dense NWP grid → mesh
-data['grid_station', 'g2m', 'mesh'].edge_index    # sparse stations → mesh
-data['mesh', 'm2g', 'grid_nwp'].edge_index        # mesh → NWP predictions
+graph["grid_nwp", "to", "mesh"].edge_index       # dense NWP grid → mesh
+graph["grid_station", "to", "mesh"].edge_index    # sparse stations → mesh
+graph["mesh", "to", "grid_nwp"].edge_index        # mesh → NWP predictions
 # ... [each source type is a separate node type with its own features]
 ```
 
@@ -574,6 +590,8 @@ graph TD
     QR --> D4
 ```
 
+The `GraphQualityReport` computes four independent metrics that together characterize whether a mesh is well-suited for GNN message-passing. Users can compare topologies quantitatively — *before* committing to expensive model training — by checking that all four scores exceed their thresholds.
+
 | Metric | Formula | Good Threshold | What It Reveals |
 |--------|---------|----------------|-----------------|
 | **Isotropy** | CV(edge_lengths) = σ/μ | CV < 0.3 | Edge uniformity for proportionate influence |
@@ -601,6 +619,8 @@ flowchart LR
     A --> B --> C --> D --> E --> F
 ```
 
+The algorithm takes scattered data points, computes local density via Voronoi cell areas, converts density into a variable spacing map, then places mesh nodes using Poisson disk sampling with spatially varying exclusion radius. Finally, Delaunay triangulation connects the adaptively placed nodes. This integrates into WMG as a new `mesh_layout="density_adaptive"` option — it produces node coordinates that any `m2m_connectivity` mode (flat, hierarchical, flat_multiscale) can then connect.
+
 **Key parameters:** `base_mesh_distance` (baseline spacing), `density_scaling` (0.0 = uniform → 1.0 = fully proportional), `min/max_mesh_distance` (degenerate element clamps).
 
 ### 7.3 Adaptive Mesh Refinement — AMR (Layer 4)
@@ -608,20 +628,22 @@ flowchart LR
 A machine-learning feedback loop where mesh structures adapt locally to minimize prediction error:
 
 ```mermaid
-flowchart TD
+flowchart LR
     classDef train fill:#eff6ff,stroke:#3b82f6,stroke-width:2px,rx:6px,color:#1e3a8a
     classDef analyze fill:#fef3c7,stroke:#d97706,stroke-width:2px,rx:6px,color:#92400e
     classDef refine fill:#dcfce7,stroke:#16a34a,stroke-width:2px,rx:6px,color:#14532d
 
-    T["Train on<br/>Initial Mesh"]:::train
-    A["Map Per-Point<br/>Prediction Errors"]:::analyze
-    K["Gaussian KDE<br/>Error Density"]:::analyze
-    R["Generate Refined Mesh<br/>spacing = base / (1 + α · kde)"]:::refine
-    RT["Retrain on<br/>Refined Mesh"]:::train
+    T["Train"]:::train
+    A["Map Errors"]:::analyze
+    K["KDE Density"]:::analyze
+    R["Refine Mesh"]:::refine
+    RT["Retrain"]:::train
 
     T --> A --> K --> R --> RT
     RT -.->|"iterate"| A
 ```
+
+AMR is an outer loop around model training. After each training cycle, per-grid-point prediction errors are mapped via `scipy.stats.gaussian_kde` to a smooth error density surface, which WMG's `density_adaptive` layout then uses to generate a refined mesh with denser nodes in high-error regions. The loop repeats until mesh quality metrics converge.
 
 Research basis: G-Adaptivity (2024) for GNN mesh movement, Multiscale AMR-GNN (2023) for over-smoothing mitigation.
 
@@ -649,6 +671,8 @@ graph LR
     BENCH ---|"rank topologies<br/>WITHOUT training"| STRETCHED
 ```
 
+The benchmarking suite (left) provides three topology metrics that rank different mesh configurations WITHOUT training a model. The stretched-grid module (right) creates meshes with high resolution in a focus region that smoothly tapers to coarser resolution outward — these can be evaluated using the benchmarking metrics.
+
 * **Topology Benchmarking Suite (`wmg_benchmark.py`):** Ranks constructed domains dynamically against IPD, ERF, and Edge Efficiency Ratios — enabling topology comparison *without model training*.
 * **Stretched Grids:** Support for regional high-resolution tapering outward — matching the ECMWF AIFS blueprint natively within the `create_all_graph_components()` workflow.
 
@@ -657,29 +681,19 @@ graph LR
 These modules represent cutting-edge research targets to be explored upon successful integration of the core architectural roadmap:
 
 ```mermaid
-flowchart TB
-    classDef core fill:#eff6ff,stroke:#3b82f6,stroke-width:2px,rx:10px,color:#1e3a8a
-    classDef graphC fill:#f0fdf4,stroke:#16a34a,stroke-width:2px,rx:10px,color:#14532d
-    classDef ml fill:#faf5ff,stroke:#9333ea,stroke-width:2px,rx:10px,color:#581c87
-    classDef io fill:#fff7ed,stroke:#ea580c,stroke-width:2px,rx:10px,color:#9a3412
+flowchart LR
+    classDef core fill:#eff6ff,stroke:#3b82f6,stroke-width:2px,rx:8px,color:#1e3a8a
+    classDef graphC fill:#f0fdf4,stroke:#16a34a,stroke-width:2px,rx:8px,color:#14532d
+    classDef ml fill:#faf5ff,stroke:#9333ea,stroke-width:2px,rx:8px,color:#581c87
+    classDef io fill:#fff7ed,stroke:#ea580c,stroke-width:2px,rx:8px,color:#9a3412
 
-    HUB["Layer 5<br/>SOTA Innovations"]:::core
+    HUB["Layer 5 SOTA"]:::core
 
-    SC["🌐 Spherical-Aware<br/>Construction<br/>Haversine · Vincenty"]:::graphC
-    LC["🔬 Learned Mesh<br/>Coarsening<br/>Weighted FPS · Spectral"]:::ml
-    DE["⚡ Dynamic Edge<br/>Attention<br/>Weather-State-Aware"]:::ml
-    VZ["📊 Analysis<br/>Dashboard<br/>ERF · Spectrum · G2M"]:::io
-    DT["📦 xr.DataTree<br/>Self-Describing<br/>graph.zarr + metadata"]:::io
-
-    HUB --> SC
-    HUB --> LC
-    HUB --> DE
-    HUB --> VZ
-    HUB --> DT
-
-    SC -.->|"correct distances"| LC
-    DE -.->|"visualize"| VZ
-    VZ -.->|"embed metrics"| DT
+    HUB --> SC["🌐 Spherical Construction"]:::graphC
+    HUB --> LC["🔬 Learned Coarsening"]:::ml
+    HUB --> DE["⚡ Dynamic Edges"]:::ml
+    HUB --> VZ["📊 Analysis Dashboard"]:::io
+    HUB --> DT["📦 xr.DataTree"]:::io
 ```
 
 | Innovation | What It Solves | Approach | Research Basis |
@@ -688,7 +702,7 @@ flowchart TB
 | **🔬 Learned Coarsening** | Rigid stride-based coarsening ignores terrain features | Weighted FPS + spectral clustering preserving Fiedler value | M4GN (2025) |
 | **⚡ Dynamic Edges** | Static graphs can't adapt to moving weather systems | `DynamicEdgeAttention` selects per-timestep edges via learned attention | RTEC / TAEGCN (2024) |
 | **📊 Analysis Dashboard** | No tools to visually understand WHY a topology works | `GraphAnalysisPlot`: receptive field heatmaps, Laplacian spectrum, G2M density | Extends `plot_2d.py` |
-| **📦 DataTree Format** | Opaque `.pt` files with no provenance metadata | Self-describing `graph.zarr/` tree with quality metrics + generation params | Aligns with WMG PR #47 |
+| **📦 DataTree Format** | Opaque `.pt` files with no provenance metadata | Self-describing `graph.zarr/` tree with quality metrics + generation params | Aligns with WMG [PR #47](https://github.com/mllam/weather-model-graphs/pull/47) |
 
 <div style="page-break-after: always;"></div>
 
@@ -719,7 +733,7 @@ This roadmap distills execution into 5 structured phases over 12 weeks, ensuring
 ### 🔬 Phase 3: Advanced Architectures (Weeks 7–9 / Layer 4 Stretch Work)
 | Focus Area | Output Artifacts |
 | :------- | :------- |
-| **Custom Mesh Types**| • **D7:** Implementation of Delaunay Triangular (PR #92), Pre-built (PR #91), and Hexagonal grid routing.<br>• **D8:** Quality metrics calculation suite (Coverage, Isotropy, G2M Balance, Spectral Gap).<br>• **D9:** Density-adaptive mapping & Multi-source blending functionality. |
+| **Custom Mesh Types**| • **D7:** Implementation of Delaunay Triangular ([PR #92](https://github.com/mllam/weather-model-graphs/pull/92)), Pre-built ([PR #91](https://github.com/mllam/weather-model-graphs/pull/91)), and Hexagonal grid routing.<br>• **D8:** Quality metrics calculation suite (Coverage, Isotropy, G2M Balance, Spectral Gap).<br>• **D9:** Density-adaptive mapping & Multi-source blending functionality. |
 
 ### 🔭 Phase 4: SOTA Implementation (Weeks 10–11 / Layer 5 Stretch Work)
 | Focus Area | Output Artifacts |
@@ -739,7 +753,7 @@ This roadmap distills execution into 5 structured phases over 12 weeks, ensuring
 
 | Risk | Prob. | Impact | Mitigation |
 |------|-------|--------|------------|
-| PR #81 review delayed | Med | High | Start #40/#42/#45 in parallel — independent |
+| [PR #81](https://github.com/mllam/weather-model-graphs/pull/81) review delayed | Med | High | Start [#40](https://github.com/mllam/weather-model-graphs/issues/40)/[#42](https://github.com/mllam/weather-model-graphs/issues/42)/[#45](https://github.com/mllam/weather-model-graphs/issues/45) in parallel — independent |
 | HeteroData breaks models | Med | High | Feature flag `use_heterodata=True/False`; baseline comparison tests |
 | Spectral computation slow | Low | Med | Power iteration for N>50k; cache eigenvalues |
 | AMR doesn't converge | Med | Low | AMR is stretch/optional; core deliverables unaffected |
@@ -795,9 +809,9 @@ This roadmap distills execution into 5 structured phases over 12 weeks, ensuring
 
 This proposal addresses [GSoC Idea #1: Flexible Graph Construction](https://github.com/mllam/neural-lam/wiki/GSoC-ideas#1-flexible-graph-construction) through a **five-layer architecture** with **15 deliverables**:
 
-1. **Layer 1 (Foundation):** PRs #81, #91, #92, #258 + v0.4.0 blockers #40, #42, #45
-2. **Layer 2 (Bridge — #384):** `build_graph.py` + `GraphFormatValidator` eliminates 600-line duplication
-3. **Layer 3 (Architecture — #385):** Incremental `pyg.HeteroData` migration: adapter → refactor → native
+1. **Layer 1 (Foundation):** [PR #81](https://github.com/mllam/weather-model-graphs/pull/81), [PR #91](https://github.com/mllam/weather-model-graphs/pull/91), [PR #92](https://github.com/mllam/weather-model-graphs/pull/92), [PR #258](https://github.com/mllam/neural-lam/pull/258) + v0.4.0 blockers [#40](https://github.com/mllam/weather-model-graphs/issues/40), [#42](https://github.com/mllam/weather-model-graphs/issues/42), [#45](https://github.com/mllam/weather-model-graphs/issues/45)
+2. **Layer 2 (Bridge — [#384](https://github.com/mllam/neural-lam/issues/384)):** `build_graph.py` + `GraphFormatValidator` eliminates 600-line duplication
+3. **Layer 3 (Architecture — [#385](https://github.com/mllam/neural-lam/issues/385)):** Incremental `pyg.HeteroData` migration: adapter → refactor → native
 4. **Layer 4 (Advanced Research):** Quality Metrics · Density-Adaptive Mesh · AMR · xr.DataTree · Multi-Source Fusion
 5. **Layer 5 (Cutting-Edge):** Spherical CoordinateSystem · Topology Benchmark Suite · Stretched-Grid · Learned Coarsening · Dynamic Edge Attention · Analysis Dashboard
 
